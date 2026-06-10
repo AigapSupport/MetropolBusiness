@@ -23,6 +23,8 @@ export const theme = {
     danger: '#C0392B',
     success: '#1E8449',
     warning: '#B9770E',
+    /** Modal/diyalog arkaplan karartması. */
+    overlay: 'rgba(16, 28, 51, 0.55)',
   },
   spacing: {
     xs: 4,

@@ -110,9 +110,11 @@ export interface SaleConfirmResponse {
   approvalNo: string;
   maskedCardNo: string;
   amount: MoneyString;
-  balanceAfter: MoneyString;
-  merchantName: string;
+  /** Metropol confirm yanıtında ad dönmeyebilir (sözleşme notu, API_CONTRACT §7). */
+  merchantName: string | null;
   date: IsoDateString;
+  // balanceAfter kaldırıldı: bakiye, confirm sonrası GET .../balance ucundan alınır
+  // (backend cache'i geçersiz kılar) — bkz. API_CONTRACT §7 notu.
 }
 
 // ── §8 Transfer ─────────────────────────────────────────

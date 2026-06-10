@@ -1,38 +1,38 @@
 /**
- * Basit auth token store'u (Faz 0 iskeleti).
- * Access token localStorage'da tutulur; oturum açan panel kullanıcısının
- * profili (@shared MeResponse) bellekte saklanır.
+ * Panel oturum store'u — access + refresh token çifti localStorage'da tutulur
+ * (sayfa yenilemesinde oturum sürer). Kullanıcı profili server state'tir ve
+ * React Query ile /me'den okunur (useMe) — burada saklanmaz.
  */
 
-import type { MeResponse } from '@shared/me';
-
 const ACCESS_TOKEN_KEY = 'accessToken';
+const REFRESH_TOKEN_KEY = 'refreshToken';
 
-/** Bellekte tutulan oturum kullanıcısı (sayfa yenilenince Faz 1'de /me ile dolacak). */
-let currentUser: MeResponse | null = null;
+/** Oturum token çifti — Authorization + sessiz yenileme için. */
+export interface SessionTokens {
+  accessToken: string;
+  refreshToken: string;
+}
 
 export function getAccessToken(): string | null {
   return localStorage.getItem(ACCESS_TOKEN_KEY);
 }
 
-/** Giriş: access token'ı saklar. Gerçek e-posta+şifre ucu Faz 1'de bağlanacak. */
-export function login(accessToken: string): void {
-  localStorage.setItem(ACCESS_TOKEN_KEY, accessToken);
+export function getRefreshToken(): string | null {
+  return localStorage.getItem(REFRESH_TOKEN_KEY);
 }
 
-export function logout(): void {
+/** Login ve refresh rotasyonunda çağrılır. */
+export function setSessionTokens(tokens: SessionTokens): void {
+  localStorage.setItem(ACCESS_TOKEN_KEY, tokens.accessToken);
+  localStorage.setItem(REFRESH_TOKEN_KEY, tokens.refreshToken);
+}
+
+/** Çıkış / oturum düşmesi — token'lar silinir. */
+export function clearSessionTokens(): void {
   localStorage.removeItem(ACCESS_TOKEN_KEY);
-  currentUser = null;
+  localStorage.removeItem(REFRESH_TOKEN_KEY);
 }
 
 export function isAuthenticated(): boolean {
   return getAccessToken() !== null;
-}
-
-export function setCurrentUser(user: MeResponse | null): void {
-  currentUser = user;
-}
-
-export function getCurrentUser(): MeResponse | null {
-  return currentUser;
 }

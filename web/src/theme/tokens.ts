@@ -30,6 +30,19 @@ export const colors = {
   danger: '#d92d20',
   success: '#12805c',
   warning: '#b54708',
+
+  /** Durum rozet zeminleri (StatusBadge) + nötr etiket. */
+  dangerBg: '#fee4e2',
+  successBg: '#d1fadf',
+  warningBg: '#fef0c7',
+  neutralBg: '#eaecf0',
+  neutralText: '#475467',
+
+  /** Modal/çekmece arkaplan karartması. */
+  overlay: 'rgba(16, 24, 40, 0.5)',
+
+  /** Devre dışı yüzey. */
+  disabledBg: '#f2f4f7',
 } as const;
 
 export const layout = {

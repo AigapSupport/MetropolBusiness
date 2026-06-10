@@ -1,7 +1,10 @@
 import type { CSSProperties } from 'react';
-import { NavLink, Outlet, useNavigate } from 'react-router-dom';
-import { getCurrentUser, logout } from '../store/auth';
+import { NavLink, Outlet } from 'react-router-dom';
+import AccessDenied from '../components/AccessDenied';
+import { useLogout } from '../hooks/useLogout';
+import { useMe } from '../hooks/useMe';
 import { colors, layout, radii } from '../theme/tokens';
+import { formatFullName } from '../utils/format';
 
 interface MenuItem {
   to: string;
@@ -49,13 +52,36 @@ function navLinkStyle({ isActive }: { isActive: boolean }): CSSProperties {
 }
 
 export default function AdminLayout() {
-  const navigate = useNavigate();
-  const user = getCurrentUser();
+  const logout = useLogout();
+  const { data: me, isPending, isError } = useMe();
 
-  const handleLogout = () => {
-    logout();
-    navigate('/login', { replace: true });
-  };
+  if (isPending) {
+    return (
+      <div
+        style={{
+          minHeight: '100vh',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          backgroundColor: colors.contentBg,
+          color: colors.textSecondary,
+          fontSize: 14,
+        }}
+      >
+        Oturum bilgisi yükleniyor…
+      </div>
+    );
+  }
+
+  // /me alınamadı (kalıcı hata) — oturumu kapatma seçeneği sun.
+  if (isError || me === undefined) {
+    return <AccessDenied onLogout={() => void logout()} />;
+  }
+
+  // PANELS_SPEC §0.4: yanlış rol ile girişte erişim reddi.
+  if (me.role !== 'company_admin') {
+    return <AccessDenied onLogout={() => void logout()} />;
+  }
 
   return (
     <div style={{ display: 'flex', minHeight: '100vh', backgroundColor: colors.contentBg }}>
@@ -107,11 +133,22 @@ export default function AdminLayout() {
           ))}
         </nav>
 
-        <button
-          type="button"
-          onClick={handleLogout}
+        {/* Altta kullanıcı kartı + çıkış (PANELS_SPEC §0.1). */}
+        <div
           style={{
             marginTop: 16,
+            padding: '10px 14px',
+            borderRadius: radii.md,
+            color: colors.sidebarText,
+            fontSize: 13,
+          }}
+        >
+          {formatFullName(me.firstName, me.lastName)}
+        </div>
+        <button
+          type="button"
+          onClick={() => void logout()}
+          style={{
             padding: '10px 14px',
             borderRadius: radii.md,
             border: 'none',
@@ -141,9 +178,9 @@ export default function AdminLayout() {
           <span style={{ fontSize: 14, fontWeight: 600, color: colors.textPrimary }}>
             Firma Admin Paneli
           </span>
-          {/* Tenant bağlamı: firma adı (Faz 1'de /me'den dolacak). */}
+          {/* Tenant bağlamı: firma adı + oturum kullanıcısı (GET /me). */}
           <span style={{ fontSize: 13, color: colors.textSecondary }}>
-            {user?.tenant.name ?? 'Firma'}
+            {me.tenant.name} · {formatFullName(me.firstName, me.lastName)}
           </span>
         </header>
 

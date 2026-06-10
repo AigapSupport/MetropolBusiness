@@ -42,3 +42,30 @@ export interface RefreshResponse {
 export interface LogoutRequest {
   refreshToken: string;
 }
+
+// ── Panel girişi (web/admin) — kendi auth, e-posta+şifre (LESSONS.md kararı) ──
+
+export interface PanelLoginRequest {
+  email: string;
+  password: string;
+  /** Aynı e-posta birden çok tenant'ta varsa zorunlu. */
+  companyCode?: string;
+}
+
+export interface PanelLoginResponse {
+  accessToken: string;
+  refreshToken: string;
+  expiresIn: number;
+  user: {
+    id: string;
+    firstName: string | null;
+    lastName: string | null;
+    role: string;
+  };
+}
+
+/** Davet token'ı ile ilk şifre belirleme (tek kullanımlık, 72 saat geçerli). */
+export interface SetPasswordRequest {
+  inviteToken: string;
+  newPassword: string;
+}

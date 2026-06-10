@@ -1,6 +1,8 @@
 /**
  * Navigasyon param listeleri — Faz 1'de ekran parametreleri (örn. kampanya id) eklendikçe genişler.
  */
+import type { IsoDateString, MoneyString } from '@shared/common';
+import type { SaleCodeType, TransferReceiverType, WalletId } from '@shared/metropol';
 
 export type AuthStackParamList = {
   Splash: undefined;
@@ -25,4 +27,82 @@ export type HomeStackParamList = {
   AnnouncementDetail: { id: string };
   SurveyFill: { id: string };
   VideoPlayer: { id: string };
+};
+
+/** Transfer formuna önceden çözülmüş alıcı (kayıtlı alıcı / QR) taşır. */
+export interface TransferReceiverParam {
+  type: TransferReceiverType;
+  /** recipientId (saved) / opak token (qr) — API'ye receiver.value olarak gider. */
+  value: string;
+  maskedName?: string;
+  maskedCardNo?: string;
+}
+
+/** Transfer onay ekranı parametreleri (PRD §8.7). */
+export interface TransferConfirmParams {
+  senderCardId: string;
+  senderHolderName: string;
+  senderMaskedCardNo: string;
+  receiverType: TransferReceiverType;
+  receiverValue: string;
+  receiverDisplayName: string;
+  receiverDisplayCardNo: string;
+  walletId: WalletId;
+  /** Tam TL (kuruşsuz) — MoneyString'e ekranda çevrilir. */
+  amountWholeLira: string;
+  note: string;
+  /** Kayıtlı alıcıdan gelen transferde tekrar kaydetme seçeneği gösterilmez. */
+  allowSaveRecipient: boolean;
+}
+
+/** Başarılı harcama fişi parametreleri (PRD §8.4 sonuç). */
+export interface PayReceiptParams {
+  merchantName: string;
+  merchantNo: string;
+  terminalNo: string;
+  approvalNo: string;
+  maskedCardNo: string;
+  amount: MoneyString;
+  date: IsoDateString;
+  walletId: WalletId;
+}
+
+/** Başarılı transfer fişi parametreleri (PRD §8.7 sonuç). */
+export interface TransferReceiptParams {
+  senderName: string;
+  receiverMaskedName: string;
+  receiverMaskedCardNo: string;
+  amount: MoneyString;
+  date: IsoDateString;
+  walletId: WalletId;
+}
+
+/**
+ * Metropol sekme stack'i (PRD §8) — ana ekran + kart ekleme + harcama + transfer
+ * + işlem geçmişi + keşfet. Harcama sırası KRİTİK: kod → kart seç → presale → onay.
+ */
+export type MetropolStackParamList = {
+  MetropolHome: undefined;
+  // Kart ekleme — 3 adım (PRD §8.2)
+  AddCardNumber: undefined;
+  AddCardOtp: { cardNo: string; phone: string; validationGuid: string };
+  AddCardInfo: { phone: string; validationGuid: string; validationCode: string };
+  // Harcama (PRD §8.4 — kart seçimi presale'den ÖNCE)
+  PayChoose: undefined;
+  PayQr: undefined;
+  PayCode: undefined;
+  PaySelectCard: { code: string; codeType: SaleCodeType };
+  PayConfirm: { code: string; codeType: SaleCodeType; cardId: string };
+  PaySuccess: { receipt: PayReceiptParams };
+  // Transfer (PRD §8.7)
+  TransferMenu: undefined;
+  /** mode 'fixed': alıcı önceden çözülmüş (kayıtlı alıcı / QR) — receiver zorunlu. */
+  TransferForm: { mode: 'self' | 'phone' | 'fixed'; receiver?: TransferReceiverParam };
+  TransferQr: undefined;
+  SavedRecipients: undefined;
+  TransferConfirm: TransferConfirmParams;
+  TransferSuccess: { receipt: TransferReceiptParams };
+  // Diğer
+  History: { cardId?: string };
+  Explore: undefined;
 };

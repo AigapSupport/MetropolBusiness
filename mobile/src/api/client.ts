@@ -141,8 +141,9 @@ async function request<TResponse>(
   path: string,
   body?: unknown,
   isRetry = false,
+  extraHeaders?: Record<string, string>,
 ): Promise<TResponse> {
-  const headers: Record<string, string> = { Accept: 'application/json' };
+  const headers: Record<string, string> = { Accept: 'application/json', ...extraHeaders };
   if (accessToken !== null) {
     headers.Authorization = `Bearer ${accessToken}`;
   }
@@ -160,7 +161,8 @@ async function request<TResponse>(
   if (response.status === 401 && !isRetry && refreshToken !== null && !path.startsWith('/auth/')) {
     const outcome = await refreshSession();
     if (outcome === 'refreshed') {
-      return request<TResponse>(method, path, body, true);
+      // Aynı ekstra başlıklarla tekrar: para uçlarında Idempotency-Key korunmalı.
+      return request<TResponse>(method, path, body, true, extraHeaders);
     }
     if (outcome === 'invalid') {
       sessionHandlers?.onSessionExpired();
@@ -183,8 +185,9 @@ export const api = {
   get<TResponse>(path: string): Promise<TResponse> {
     return request<TResponse>('GET', path);
   },
-  post<TResponse>(path: string, body?: unknown): Promise<TResponse> {
-    return request<TResponse>('POST', path, body);
+  /** headers: para hareketi uçlarında zorunlu Idempotency-Key gibi ek başlıklar (§0.1). */
+  post<TResponse>(path: string, body?: unknown, headers?: Record<string, string>): Promise<TResponse> {
+    return request<TResponse>('POST', path, body, false, headers);
   },
   put<TResponse>(path: string, body?: unknown): Promise<TResponse> {
     return request<TResponse>('PUT', path, body);

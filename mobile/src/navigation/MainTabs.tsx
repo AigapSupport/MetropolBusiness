@@ -8,11 +8,11 @@ import { useTranslation } from 'react-i18next';
 
 import { BenefitsScreen } from '@/screens/Benefits/BenefitsScreen';
 import { ChatScreen } from '@/screens/Chat/ChatScreen';
-import { MetropolScreen } from '@/screens/Metropol/MetropolScreen';
 import { OtherScreen } from '@/screens/Other/OtherScreen';
 import { useTheme } from '@/theme/ThemeProvider';
 
 import { HomeStack } from './HomeStack';
+import { MetropolStack } from './MetropolStack';
 import type { MainTabParamList } from './types';
 
 const Tab = createBottomTabNavigator<MainTabParamList>();
@@ -41,9 +41,10 @@ export function MainTabs() {
         component={BenefitsScreen}
         options={{ tabBarLabel: t('tabs.benefits') }}
       />
+      {/* Metropol kendi stack'ini taşır: ana ekran + kart ekle + harcama + transfer (PRD §8). */}
       <Tab.Screen
         name="Metropol"
-        component={MetropolScreen}
+        component={MetropolStack}
         options={{ tabBarLabel: t('tabs.metropol') }}
       />
       <Tab.Screen name="Chat" component={ChatScreen} options={{ tabBarLabel: t('tabs.chat') }} />

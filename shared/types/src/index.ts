@@ -5,6 +5,7 @@
 
 export * from './common';
 export * from './auth';
+export * from './content-admin';
 export * from './me';
 export * from './home';
 export * from './benefits';

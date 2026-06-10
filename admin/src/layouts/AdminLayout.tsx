@@ -1,6 +1,6 @@
-import type { CSSProperties } from 'react';
+import { useState, type CSSProperties } from 'react';
 import { NavLink, Outlet, useNavigate } from 'react-router-dom';
-import { logout } from '../store/auth';
+import { currentUser, logout } from '../store/auth';
 import { theme } from '../theme/tokens';
 
 /** Sidebar menüsü — PANELS_SPEC.md §B.1. */
@@ -51,8 +51,13 @@ const styles: Record<string, CSSProperties> = {
     color: theme.colors.sidebarActiveText,
     fontWeight: 600,
   },
-  logoutButton: {
+  userInfo: {
     marginTop: 'auto',
+    padding: `${theme.spacing.sm}px ${theme.spacing.md}px 0`,
+    fontSize: theme.font.sizeSm,
+    color: theme.colors.sidebarText,
+  },
+  logoutButton: {
     padding: `${theme.spacing.sm}px ${theme.spacing.md}px`,
     borderRadius: theme.radius.sm,
     border: `1px solid ${theme.colors.sidebarActiveBg}`,
@@ -71,10 +76,15 @@ const styles: Record<string, CSSProperties> = {
 /** Korumalı sayfaların ortak çatısı: sol menü + içerik alanı. */
 export function AdminLayout() {
   const navigate = useNavigate();
+  const [loggingOut, setLoggingOut] = useState(false);
+  const user = currentUser();
 
   function handleLogout(): void {
-    logout();
-    navigate('/login', { replace: true });
+    setLoggingOut(true);
+    // logout() refresh token'ı sunucuda iptal eder; hata olsa da yerel oturum kapanır.
+    void logout().finally(() => {
+      navigate('/login', { replace: true });
+    });
   }
 
   return (
@@ -94,8 +104,19 @@ export function AdminLayout() {
             </NavLink>
           ))}
         </nav>
-        <button type="button" style={styles.logoutButton} onClick={handleLogout}>
-          Çıkış Yap
+        <div style={styles.userInfo}>
+          {user !== null
+            ? [user.firstName, user.lastName].filter((part) => part !== null).join(' ') ||
+              'Platform Yöneticisi'
+            : ''}
+        </div>
+        <button
+          type="button"
+          style={styles.logoutButton}
+          onClick={handleLogout}
+          disabled={loggingOut}
+        >
+          {loggingOut ? 'Çıkış yapılıyor…' : 'Çıkış Yap'}
         </button>
       </aside>
       <main style={styles.content}>

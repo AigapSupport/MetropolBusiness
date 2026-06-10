@@ -1,8 +1,8 @@
 /**
- * Marka logosu placeholder'ı — prototip BrandMark karşılığı (theme.jsx).
- * TODO(Faz 1.10): tenant branding'ten gerçek logo (logoUrl) yüklenecek.
+ * Marka logosu — tenant branding'inden logoUrl varsa onu gösterir (runtime
+ * white-label, TODO 1.10); yoksa marka renkli placeholder (prototip BrandMark).
  */
-import { View } from 'react-native';
+import { Image, View } from 'react-native';
 
 import { useTheme } from '@/theme/ThemeProvider';
 
@@ -12,7 +12,17 @@ interface BrandLogoProps {
 }
 
 export function BrandLogo({ size = 76 }: BrandLogoProps) {
-  const { theme } = useTheme();
+  const { theme, logoUrl } = useTheme();
+
+  if (logoUrl !== null) {
+    return (
+      <Image
+        source={{ uri: logoUrl }}
+        style={{ width: size, height: size, borderRadius: size * 0.32 }}
+        resizeMode="contain"
+      />
+    );
+  }
 
   return (
     <View
