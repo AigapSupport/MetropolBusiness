@@ -33,6 +33,8 @@ wsl --update
 
 **Faz 1'e etkisi:** EF Core migration'ları ve entegrasyon testleri yerel PostgreSQL ister. Docker çözülene kadar alternatifler: (a) yönetici Docker'ı etkinleştirir, (b) uzak/test PostgreSQL bağlantı dizesi kullanılır, (c) testlerde Testcontainers yerine SQLite/InMemory **yalnızca** birim test düzeyinde (tenant filtresi davranış farkları nedeniyle entegrasyon testleri yine gerçek Postgres ister).
 
+**Güncelleme (Faz 1.1):** İlk migration (`InitialIdentity`) design-time factory ile DB'siz üretildi; tenant izolasyon testleri SQLite in-memory ile yazıldı (9 test yeşil). `dotnet ef database update` ve gerçek Postgres entegrasyon testleri Docker engeli çözülünce çalıştırılacak.
+
 ---
 
 ## 2026-06-10 — wsl.exe çıktısı PowerShell'de bozuk görünüyor

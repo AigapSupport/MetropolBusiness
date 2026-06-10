@@ -44,13 +44,13 @@
 ## FAZ 1 — MVP
 
 ### 1.1 Çok-kiracılılık & kimlik (BACKEND — ÖNCE BU)
-- [ ] Entity: Tenant, User, Role, Segment, UserSegment
-- [ ] EF Core + PostgreSQL, ilk migration
-- [ ] `ITenantContext` + JWT'den tenant_id okuma
-- [ ] EF global query filter (TenantId) + manuel filtre disiplini
-- [ ] **Test:** A firması kullanıcısı B firması verisine erişemez
-- [ ] JWT access+refresh, rol+tenant claim
-- [ ] Rol/yetki attribute'ları (endpoint guard)
+- [x] Entity: Tenant, User (rol enum), Segment, UserSegment (+Module, SegmentModule)
+- [x] EF Core + PostgreSQL (Npgsql, snake_case), ilk migration `InitialIdentity` üretildi (DB'ye uygulama Docker engeli çözülünce — bkz. `LESSONS.md`)
+- [x] `ITenantContext` + JWT'den tenant_id okuma (`HttpTenantContext`, claim'den; header'dan alınmaz)
+- [x] EF global query filter (TenantId + soft-delete + join tabloları) + TenantId otomatik atama (SaveChanges)
+- [x] **Test:** A firması kullanıcısı B firması verisine erişemez — 9 izolasyon testi (SQLite in-memory; gerçek Postgres entegrasyon testi Docker sonrası)
+- [x] JWT access+refresh üretimi, rol+tenant claim (`JwtTokenService`; refresh saklama/rotasyon 1.2'de)
+- [x] Rol/yetki attribute'ları (endpoint guard) — `PolicyNames`: PlatformAdmin/CompanyAdmin/Approver/TenantUser
 
 ### 1.2 Auth (BACKEND + MOBILE)
 - [ ] `POST /auth/otp/send` (rate-limit, Redis)
