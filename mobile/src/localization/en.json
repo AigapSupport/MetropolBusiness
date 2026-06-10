@@ -1,0 +1,24 @@
+{
+  "common": {
+    "continue": "Continue",
+    "comingSoon": "This screen is under construction",
+    "loading": "Loading..."
+  },
+  "tabs": {
+    "home": "Home",
+    "benefits": "Benefits",
+    "metropol": "Metropol",
+    "chat": "Chat",
+    "other": "Other"
+  },
+  "auth": {
+    "splashTitle": "MetropolBusiness",
+    "phoneTitle": "Sign in with Phone",
+    "otpTitle": "Verification Code",
+    "completeProfileTitle": "Complete Profile",
+    "devLogin": "Temporary Login (dev)"
+  },
+  "account": {
+    "title": "My Account"
+  }
+}

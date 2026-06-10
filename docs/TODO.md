@@ -34,10 +34,10 @@
 - [x] Yapısal logging (PII'siz JSON console), global exception middleware, hata zarfı `{code,message,details}`
 
 ### 0.4 İstemci iskeletleri
-- [ ] Mobile: RN init (TS), navigasyon, tema/token altyapısı, localization (TR/EN), API client, React Query
-- [ ] Web: React (TS) init, routing, auth guard, API client
-- [ ] Admin: React (TS) init, routing, auth guard, API client
-- [ ] `shared/types`: ortak DTO tipleri + üretim/paylaşım yöntemi
+- [x] Mobile: RN 0.74 (TS), navigasyon (5 sekme + AuthStack), tema/token altyapısı (runtime palet), localization (TR/EN, i18next), API client, React Query — typecheck+lint ✓ (native android/ios klasörleri bu ortamda üretilemedi, bkz. `LESSONS.md`)
+- [x] Web: React (TS, Vite) init, routing (PANELS_SPEC A), auth guard, API client — typecheck+lint+build ✓
+- [x] Admin: React (TS, Vite) init, routing (PANELS_SPEC B), auth guard, API client — typecheck+lint+build ✓
+- [x] `shared/types`: ortak DTO tipleri (API_CONTRACT §1–13) + paylaşım yöntemi (`@shared/*` path alias; bkz. `shared/types/README.md`)
 
 ---
 

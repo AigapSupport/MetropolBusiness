@@ -1,0 +1,24 @@
+{
+  "common": {
+    "continue": "Devam Et",
+    "comingSoon": "Bu ekran hazırlanıyor",
+    "loading": "Yükleniyor..."
+  },
+  "tabs": {
+    "home": "Ana Sayfa",
+    "benefits": "Yan Haklar",
+    "metropol": "Metropol",
+    "chat": "Sohbet",
+    "other": "Diğer"
+  },
+  "auth": {
+    "splashTitle": "MetropolBusiness",
+    "phoneTitle": "Telefon ile Giriş",
+    "otpTitle": "Doğrulama Kodu",
+    "completeProfileTitle": "Profil Tamamlama",
+    "devLogin": "Geçici Giriş (geliştirme)"
+  },
+  "account": {
+    "title": "Hesabım"
+  }
+}

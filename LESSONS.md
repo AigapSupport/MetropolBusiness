@@ -40,3 +40,13 @@ wsl --update
 **Belirti:** `wsl --status` çıktısı boşluklu/UTF-16 karakterlerle geliyor (`D e f a u l t...`).
 **Neden:** wsl.exe UTF-16LE çıktı verir; PowerShell 5.1 bunu yanlış kod sayfasıyla okur.
 **Ders:** wsl çıktısını okumadan önce `$env:WSL_UTF8=1` ayarla veya `[Console]::OutputEncoding` değiştir; karar verirken çıktıdaki boşlukları temizleyerek oku.
+
+---
+
+## 2026-06-10 — RN native projeleri (android/ios) bu ortamda üretilemedi (Faz 0.4)
+
+**Belirti/kısıt:** `npx react-native init` boş olmayan klasöre kurulamaz; ayrıca iOS native projesi yalnızca macOS'ta üretilir/derlenir — bu makine Windows Server.
+
+**Yapılan:** `mobile/` altına yalnızca TS/JS uygulama iskeleti + config (babel/metro/tsconfig/eslint) kuruldu. `index.js` AppRegistry kaydı hazır; native klasörler eklendiğinde uygulama kodu değişmez. `npm run typecheck` ve `npm run lint` doğrulandı; Metro/native build bu ortamda test edilmedi.
+
+**Kalıcı çözüm:** macOS'ta (Android için herhangi bir makinede) RN CLI 0.74 şablonundan proje üretilip (`npx @react-native-community/cli init MetropolBusiness --version 0.74.x`) `android/` ve `ios/` klasörleri bu repoya kopyalanacak. App adı `mobile/app.json > name: MetropolBusiness` ile eşleşmeli.

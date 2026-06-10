@@ -154,7 +154,7 @@ Zorunlu testler: para hareketi (harcama/transfer), tenant izolasyonu, modül yet
 
 ## Durum
 
-Şu an **doküman ve iskelet** aşamasında (Faz 0). Yol haritası ve görevler için `docs/TODO.md`. Netleştirilmesi gereken açık kararlar `docs/PRD.md` Bölüm 17'de.
+**Faz 0 (kurulum & altyapı) tamamlandı** — backend solution (net8.0, build+test yeşil, `/health` çalışıyor), üç istemci iskeleti (typecheck+lint yeşil) ve `shared/types` hazır. Sırada **Faz 1 (MVP)**. Yol haritası ve görevler için `docs/TODO.md`; karşılaşılan ortam engelleri için `LESSONS.md`. Kesinleşen kararlar `docs/PRD.md` Bölüm 17'de.
 
 ---
 
