@@ -18,3 +18,11 @@ export type MainTabParamList = {
   Chat: undefined;
   Other: undefined;
 };
+
+/** Ana Sayfa stack'i (PRD §6) — feed + duyuru detayı + anket doldurma + video oynatma. */
+export type HomeStackParamList = {
+  HomeFeed: undefined;
+  AnnouncementDetail: { id: string };
+  SurveyFill: { id: string };
+  VideoPlayer: { id: string };
+};

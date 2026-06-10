@@ -25,7 +25,10 @@ internal static class EnumConverters
     public static readonly ValueConverter<SurveyQuestionType, string> SurveyQuestionTypeConverter =
         new(type => SurveyQuestionTypeToDb(type), value => SurveyQuestionTypeFromDb(value));
 
-    private static string UserRoleToDb(UserRole role) => role switch
+    // Kimlik sözlükleri DTO eşlemesinde de kullanılır (Me/Company/Platform servisleri);
+    // bu yüzden internal-görünür (Content sözlükleriyle aynı gerekçe).
+
+    internal static string UserRoleToDb(UserRole role) => role switch
     {
         UserRole.EndUser => "enduser",
         UserRole.CompanyAdmin => "company_admin",
@@ -34,7 +37,7 @@ internal static class EnumConverters
         _ => throw new ArgumentOutOfRangeException(nameof(role), role, null),
     };
 
-    private static UserRole UserRoleFromDb(string value) => value switch
+    internal static UserRole UserRoleFromDb(string value) => value switch
     {
         "enduser" => UserRole.EndUser,
         "company_admin" => UserRole.CompanyAdmin,
@@ -43,7 +46,7 @@ internal static class EnumConverters
         _ => throw new ArgumentOutOfRangeException(nameof(value), value, null),
     };
 
-    private static string EntityStatusToDb(EntityStatus status) => status switch
+    internal static string EntityStatusToDb(EntityStatus status) => status switch
     {
         EntityStatus.Active => "active",
         EntityStatus.Passive => "passive",
@@ -57,7 +60,7 @@ internal static class EnumConverters
         _ => throw new ArgumentOutOfRangeException(nameof(value), value, null),
     };
 
-    private static string TenantStatusToDb(TenantStatus status) => status switch
+    internal static string TenantStatusToDb(TenantStatus status) => status switch
     {
         TenantStatus.Pending => "pending",
         TenantStatus.Active => "active",

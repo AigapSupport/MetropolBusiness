@@ -23,6 +23,12 @@ public class User : BaseEntity, ITenantOwned, ISoftDeletable
     public string? City { get; set; }
     public string? AvatarUrl { get; set; }
 
+    /// <summary>
+    /// Bildirim/izin tercihleri (jsonb) — API_CONTRACT §2 /me/preferences.
+    /// Sözleşme alanları camelCase JSON olarak saklanır; boş nesne = varsayılanlar.
+    /// </summary>
+    public string PreferencesJson { get; set; } = "{}";
+
     public UserRole Role { get; set; } = UserRole.EndUser;
 
     /// <summary>Metropol MemberId — kullanıcının ödeme kuruluşundaki benzersiz numarası.</summary>

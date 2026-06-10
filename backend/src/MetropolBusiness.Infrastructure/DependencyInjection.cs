@@ -1,11 +1,17 @@
 using MetropolBusiness.Application.Auth;
+using MetropolBusiness.Application.Common;
 using MetropolBusiness.Application.Content;
+using MetropolBusiness.Application.Tenants;
+using MetropolBusiness.Application.Users;
 using MetropolBusiness.Infrastructure.Auth;
 using MetropolBusiness.Infrastructure.Cache;
 using MetropolBusiness.Infrastructure.Content;
 using MetropolBusiness.Infrastructure.Identity;
 using MetropolBusiness.Infrastructure.Persistence;
+using MetropolBusiness.Infrastructure.Security;
 using MetropolBusiness.Infrastructure.Sms;
+using MetropolBusiness.Infrastructure.Tenants;
+using MetropolBusiness.Infrastructure.Users;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
@@ -51,7 +57,19 @@ public static class DependencyInjection
             // İçerik servisleri de AppDbContext ister (TODO 1.8).
             services.AddScoped<IContentService, ContentService>();
             services.AddScoped<IContentAdminService, ContentAdminService>();
+
+            // /me + firma admin + platform admin + marka servisleri (TODO 1.9/1.10 backend).
+            services.AddScoped<IMeService, MeService>();
+            services.AddScoped<ICompanyUsersService, CompanyUsersService>();
+            services.AddScoped<ICompanySegmentsService, CompanySegmentsService>();
+            services.AddScoped<IPlatformTenantsService, PlatformTenantsService>();
+            services.AddScoped<IPlatformModulesService, PlatformModulesService>();
+            services.AddScoped<ITenantBrandingService, TenantBrandingService>();
         }
+
+        // At-rest alan şifrelemesi — şimdilik placeholder; gerçek (DataProtection/KMS)
+        // implementasyon Faz sonrası yalnızca bu kaydı değiştirerek devreye girer.
+        services.AddSingleton<IFieldCipher, PlaceholderFieldCipher>();
 
         services.AddScoped<IJwtTokenService, JwtTokenService>();
         services.AddSingleton<IOtpStore, DistributedCacheOtpStore>();

@@ -112,19 +112,23 @@
 - [x] Backend: anket yanıt + tek seferlik kontrol — ikinci yanıt 409 `SURVEY_ALREADY_ANSWERED`; tek seferlik olmayanda upsert; soru id doğrulaması (14 yeni test, `ContentServiceTests`)
 - [x] Backend: video izleme durumu (kullanıcı bazlı) — `POST /home/videos/{id}/watch` upsert, completed→Watched+WatchedAt
 - [ ] Web (firma admin): anket CRUD, duyuru CRUD, video ekleme + segment hedefleme
-- [ ] Mobile: duyuru carousel + detay
-- [ ] Mobile: anket listesi + doldurma (soru tipleri, ilerleme)
-- [ ] Mobile: video listesi + oynatıcı + izlendi işaretleme
+- [x] Mobile: duyuru carousel + detay — HomeScreen yatay carousel (kapak+başlık+kısa metin) + AnnouncementDetailScreen (kaynak rozeti firma/platform); yükleniyor/boş/hata + pull-to-refresh
+- [x] Mobile: anket listesi + doldurma (soru tipleri, ilerleme) — SurveyFillScreen tek soru/sayfa (single/multi/text/rating), ilerleme çubuğu, 409 SURVEY_ALREADY_ANSWERED özel mesaj, başarıda geri dön + liste yenileme
+- [~] Mobile: video listesi + oynatıcı + izlendi işaretleme — oynatıcı native modül bekliyor [~] (react-native-video kurulumu native klasörlerle, VideoPlayerScreen'de placeholder); izlendi işaretleme [x] (POST /home/videos/{id}/watch, kullanıcı bazlı)
 
 ### 1.9 Temel paneller (WEB + ADMIN)
+- [x] Backend: /me uçları (GET/PUT /me, PUT /me/tckn, GET/PUT /me/preferences, GET /me/modules) — `MeController`+`MeService` (API_CONTRACT §2); TCKN at-rest şimdilik placeholder şifreleme (`IFieldCipher`+`PlaceholderFieldCipher`, "enc:"+Base64 — gerçek DataProtection/KMS Faz sonrası); users tablosuna `preferences` jsonb kolonu (migration `MeAndAdminEndpoints`)
+- [x] Backend: firma admin kullanıcı/segment uçları (API_CONTRACT §12) — `CompanyUsersController`+`CompanySegmentsController`; kullanıcı liste `?q&segmentId&status&page`, telefon tenant içinde benzersiz (ihlal VALIDATION_ERROR), DELETE pasifleştirir (hard delete yok), segment silme kullanıcı varsa engelli (details.userCount), segment→modül atamasında tanımsız/pasif kod VALIDATION_ERROR
+- [x] Backend: platform admin uçları (API_CONTRACT §13) — `PlatformTenantsController`+`PlatformModulesController`; tenant liste/oluştur/güncelle+durum (code benzersiz), yanıtlar PII'siz (yalnız userCount), firma admin daveti (telefon zorunlu, company_admin), modül tanımları CRUD; kritik işlemlere PII'siz ILogger izi (AuditLog entity Faz 3)
 - [ ] Web: login, dashboard, kullanıcı listesi/ekle, segment yönetimi
 - [ ] Web: segment→modül yetki ekranı
 - [ ] Admin: login, firma (tenant) oluştur/onayla, firma admin ata, tenant marka ayarı
 - [ ] Admin: modül tanımları
-- [ ] **Test:** firma admin sadece kendi tenant; platform admin PII'ye erişemez
+- [!] Panel girişi (e-posta+şifre, PANELS_SPEC §0.4) sözleşme boşluğu — karar bekliyor (LESSONS.md)
+- [x] **Test:** firma admin sadece kendi tenant; platform admin PII'ye erişemez — backend servis testleriyle karşılandı (`AdminServicesTests` 10 + `MeServiceTests` 6, SQLite in-memory); panel UI testleri panel geliştirilince ayrıca
 
 ### 1.10 White-label tema
-- [ ] Backend: tenant marka (logo, renk) endpoint
+- [x] Backend: tenant marka (logo, renk) endpoint — `GET /api/v1/tenants/{code}/branding` (anonim, mobil login öncesi tema; yalnız aktif tenant, PII yok; `TenantBrandingController`)
 - [ ] Mobile: tema token runtime yükleme (hardcode renk yok)
 
 ---

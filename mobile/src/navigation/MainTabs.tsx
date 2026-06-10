@@ -8,11 +8,11 @@ import { useTranslation } from 'react-i18next';
 
 import { BenefitsScreen } from '@/screens/Benefits/BenefitsScreen';
 import { ChatScreen } from '@/screens/Chat/ChatScreen';
-import { HomeScreen } from '@/screens/Home/HomeScreen';
 import { MetropolScreen } from '@/screens/Metropol/MetropolScreen';
 import { OtherScreen } from '@/screens/Other/OtherScreen';
 import { useTheme } from '@/theme/ThemeProvider';
 
+import { HomeStack } from './HomeStack';
 import type { MainTabParamList } from './types';
 
 const Tab = createBottomTabNavigator<MainTabParamList>();
@@ -34,7 +34,8 @@ export function MainTabs() {
         },
       }}
     >
-      <Tab.Screen name="Home" component={HomeScreen} options={{ tabBarLabel: t('tabs.home') }} />
+      {/* Ana Sayfa kendi stack'ini taşır: feed + duyuru detayı + anket + video (PRD §6). */}
+      <Tab.Screen name="Home" component={HomeStack} options={{ tabBarLabel: t('tabs.home') }} />
       <Tab.Screen
         name="Benefits"
         component={BenefitsScreen}

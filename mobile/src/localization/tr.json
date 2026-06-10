@@ -40,6 +40,57 @@
       "generic": "Bir şeyler ters gitti. Lütfen tekrar deneyin."
     }
   },
+  "home": {
+    "menu": "Menü",
+    "chatShortcut": "Sohbet",
+    "notifications": "Bildirimler",
+    "sectionError": "İçerik yüklenemedi.",
+    "retry": "Tekrar dene",
+    "announcements": {
+      "title": "Duyurular",
+      "empty": "Şu an yayında duyuru yok.",
+      "sourceCompany": "Firma",
+      "sourcePlatform": "Platform"
+    },
+    "surveys": {
+      "title": "Anketler",
+      "empty": "Şu an açık anket yok.",
+      "meta": "{{questions}} soru · ~{{minutes}} dk",
+      "completed": "Tamamlandı",
+      "join": "Katıl"
+    },
+    "videos": {
+      "title": "İzlenecek Videolar",
+      "empty": "Şu an izlenecek video yok.",
+      "watched": "İzlendi",
+      "notWatched": "İzlenmedi",
+      "mandatory": "Zorunlu"
+    }
+  },
+  "announcementDetail": {
+    "title": "Duyuru"
+  },
+  "survey": {
+    "title": "Anket",
+    "progress": "{{current}}/{{total}}",
+    "next": "Sonraki Soru",
+    "finish": "Anketi Bitir",
+    "textPlaceholder": "Yanıtınızı buraya yazın",
+    "ratingLow": "Hiç memnun değilim",
+    "ratingHigh": "Çok memnunum",
+    "empty": "Bu ankette soru bulunmuyor.",
+    "alreadyAnswered": "Bu anketi daha önce yanıtladınız. Yanıtlarınız kayıtlı.",
+    "submitError": "Yanıt gönderilemedi. Lütfen tekrar deneyin."
+  },
+  "video": {
+    "title": "Video",
+    "durationLabel": "Süre: {{duration}}",
+    "watched": "İzlendi",
+    "playerPlaceholder": "Oynatıcı yakında eklenecek",
+    "markWatched": "İzlendi olarak işaretle",
+    "markError": "İzlenme durumu kaydedilemedi. Lütfen tekrar deneyin.",
+    "notFound": "Video bulunamadı."
+  },
   "account": {
     "title": "Hesabım"
   }

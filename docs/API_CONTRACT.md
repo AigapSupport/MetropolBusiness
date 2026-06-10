@@ -86,6 +86,13 @@ Yanıt 200: yeni `accessToken` + dönen `refreshToken` (rotasyon). Hata 401 `REF
 ### POST /auth/logout
 İstek: `{ "refreshToken": "jwt" }` → 204. Refresh geçersiz kılınır.
 
+### GET /tenants/{code}/branding
+**Anonim** (login öncesi white-label tema yüklemesi; TODO 1.10). Yalnızca **aktif** tenant döner; PII yok.
+```json
+{ "name": "AIGAP", "logoUrl": "https://...", "primaryColor": "#F2697B", "secondaryColor": "#202833" }
+```
+Hata: 404 `NOT_FOUND` (pasif/bilinmeyen firma kodu).
+
 ---
 
 ## 2. PROFİL (ME)
@@ -150,7 +157,7 @@ Yanıt 201. Hata 409 `SURVEY_ALREADY_ANSWERED` (singleResponse).
 
 ### GET /home/videos
 ```json
-{ "items": [ { "id":"uuid", "title":"", "thumbnailUrl":"", "durationSeconds":120, "mandatory":true, "watched":false, "progressSeconds":0 } ] }
+{ "items": [ { "id":"uuid", "title":"", "description":null, "url":"https://...", "thumbnailUrl":"", "durationSeconds":120, "mandatory":true, "watched":false, "progressSeconds":0 } ] }
 ```
 
 ### POST /home/videos/{id}/watch

@@ -40,6 +40,57 @@
       "generic": "Something went wrong. Please try again."
     }
   },
+  "home": {
+    "menu": "Menu",
+    "chatShortcut": "Chat",
+    "notifications": "Notifications",
+    "sectionError": "Content could not be loaded.",
+    "retry": "Try again",
+    "announcements": {
+      "title": "Announcements",
+      "empty": "No announcements right now.",
+      "sourceCompany": "Company",
+      "sourcePlatform": "Platform"
+    },
+    "surveys": {
+      "title": "Surveys",
+      "empty": "No open surveys right now.",
+      "meta": "{{questions}} questions · ~{{minutes}} min",
+      "completed": "Completed",
+      "join": "Join"
+    },
+    "videos": {
+      "title": "Videos to Watch",
+      "empty": "No videos to watch right now.",
+      "watched": "Watched",
+      "notWatched": "Not watched",
+      "mandatory": "Required"
+    }
+  },
+  "announcementDetail": {
+    "title": "Announcement"
+  },
+  "survey": {
+    "title": "Survey",
+    "progress": "{{current}}/{{total}}",
+    "next": "Next Question",
+    "finish": "Finish Survey",
+    "textPlaceholder": "Type your answer here",
+    "ratingLow": "Not satisfied at all",
+    "ratingHigh": "Very satisfied",
+    "empty": "This survey has no questions.",
+    "alreadyAnswered": "You have already answered this survey. Your answers are saved.",
+    "submitError": "Could not submit your response. Please try again."
+  },
+  "video": {
+    "title": "Video",
+    "durationLabel": "Duration: {{duration}}",
+    "watched": "Watched",
+    "playerPlaceholder": "Player coming soon",
+    "markWatched": "Mark as watched",
+    "markError": "Could not save watch status. Please try again.",
+    "notFound": "Video not found."
+  },
   "account": {
     "title": "My Account"
   }

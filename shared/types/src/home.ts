@@ -10,7 +10,8 @@ export interface Announcement {
   body: string;
   coverUrl: string | null;
   source: ContentSource;
-  publishedAt: IsoDateString;
+  /** Backend DTO'da nullable (AnnouncementDto.PublishedAt) — yayın tarihi olmayabilir. */
+  publishedAt: IsoDateString | null;
 }
 
 export type SurveyQuestionType = 'single' | 'multi' | 'text' | 'rating';
@@ -47,9 +48,20 @@ export interface SurveyResponseRequest {
   answers: SurveyAnswer[];
 }
 
+/** POST /home/surveys/{id}/responses 201 yanıtı (backend SurveyResponseCreatedDto). */
+export interface SurveyResponseCreated {
+  id: string;
+  surveyId: string;
+  createdAt: IsoDateString;
+}
+
 export interface Video {
   id: string;
   title: string;
+  /** Oynatma ekranında gösterilen açıklama (backend VideoDto.Description). */
+  description: string | null;
+  /** Video kaynağı — oynatıcı bu adresi kullanır (backend VideoDto.Url). */
+  url: string;
   thumbnailUrl: string | null;
   durationSeconds: number;
   mandatory: boolean;
@@ -61,4 +73,12 @@ export interface Video {
 export interface VideoWatchRequest {
   progressSeconds: number;
   completed: boolean;
+}
+
+/** POST /home/videos/{id}/watch 200 yanıtı — güncel izleme durumu (backend VideoWatchStateDto). */
+export interface VideoWatchState {
+  videoId: string;
+  watched: boolean;
+  progressSeconds: number;
+  watchedAt: IsoDateString | null;
 }

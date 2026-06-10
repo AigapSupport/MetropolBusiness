@@ -62,3 +62,27 @@ wsl --update
 **Yapılan:** `mobile/` altına yalnızca TS/JS uygulama iskeleti + config (babel/metro/tsconfig/eslint) kuruldu. `index.js` AppRegistry kaydı hazır; native klasörler eklendiğinde uygulama kodu değişmez. `npm run typecheck` ve `npm run lint` doğrulandı; Metro/native build bu ortamda test edilmedi.
 
 **Kalıcı çözüm:** macOS'ta (Android için herhangi bir makinede) RN CLI 0.74 şablonundan proje üretilip (`npx @react-native-community/cli init MetropolBusiness --version 0.74.x`) `android/` ve `ios/` klasörleri bu repoya kopyalanacak. App adı `mobile/app.json > name: MetropolBusiness` ile eşleşmeli.
+
+---
+
+## 2026-06-10 — React Query v5 + TS 5.0.4: useQuery dönüşü sessizce `any` (Faz 1.8)
+
+**Belirti:** `useQuery(...).data` üzerinden gelen listelerde `.map()` parametreleri `TS7006: implicitly has an 'any' type` verdi; sorgu verisinin tüm tipi kaybolmuştu (strict/no-any kuralına sessiz ihlal riski).
+
+**Kök neden:** `@tanstack/react-query` `^5.59.20` aralığından **5.101.0** kuruluydu; bu sürümün tip bildirimi `useQuery` dönüşünde TS **5.4+** yerleşiği olan `NoInfer<T>`'i kullanıyor. Projede TS **5.0.4** vardı; `skipLibCheck` nedeniyle çözülemeyen `NoInfer` hata vermeden `any`'ye düşüyor ve tüm query verileri `any` oluyordu.
+
+**Çözüm:** `mobile` devDependency `typescript` **5.6.3**'e sabitlendi (typescript-eslint 8.13 desteği `<5.7` olduğundan 5.6 seçildi); typecheck+lint yeşil. **Ders:** React Query 5.6x+ kullanan tüm istemcilerde (web/admin eklenirse) TS ≥ 5.4 şart; `skipLibCheck` bu tür uyumsuzlukları gizler — kütüphane güncellemesinden sonra bilinen bir tipin `any`'ye dönüp dönmediğini probe ile kontrol et.
+
+---
+
+## 2026-06-10 — Panel girişi (e-posta+şifre) sözleşme boşluğu (Faz 1.9)
+
+**Belirti:** `docs/PANELS_SPEC.md §0.4` web/admin panelleri için e-posta+şifre girişi (+şifremi unuttum) tanımlar; ancak `docs/API_CONTRACT.md §1`'de yalnızca telefon+OTP akışı var ve `users` şemasında şifre (hash) kolonu yok.
+
+**Yapılmadı (bilinçli):** Şifre kolonu ve e-posta+şifre login ucu eklemek hem API sözleşmesini hem DB şemasını tek taraflı genişletmek olurdu (CLAUDE.md §12: belirsizlikte dur ve sor). 1.9'un backend uçları panel girişinden bağımsız tamamlandı — `company_admin`/`platform_admin` rollü kullanıcılar mevcut OTP akışıyla token alabildiği için uçlar şimdiden test edilebilir durumda.
+
+**Seçenekler (karar bekliyor):**
+1. **OTP'yi panele taşımak:** panel girişi de telefon+OTP olur. Mevcut altyapı yeterli (firma admin daveti zaten telefonu zorunlu alıyor); sözleşme değişikliği minimal, şifre saklama/sıfırlama güvenlik yüzeyi hiç açılmaz. PANELS_SPEC §0.4 güncellenir.
+2. **users'a password_hash kolonu + e-posta+şifre login ucu:** PANELS_SPEC'e birebir uyar; karşılığında şifre politikası, hashing, "şifremi unuttum" (e-posta gönderimi) ve ayrı rate-limit gerektirir.
+
+**Karar sahibi:** proje sahibi. Karar netleşince `API_CONTRACT.md §1` ve `docs/TODO.md` 1.9 altındaki `[!]` maddesi güncellenecek.
