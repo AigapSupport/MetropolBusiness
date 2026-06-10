@@ -45,6 +45,16 @@ wsl --update
 
 ---
 
+## 2026-06-10 — MetropolModels.cs kaynağı repoda yok (Faz 1.3)
+
+**Belirti:** `backend/src/MetropolBusiness.Integration.Metropol/Models/MetropolModels.cs` 0-byte placeholder; gerçek Metropol sözleşme dosyası (DTO'lar + `ApiEndpoints` sabitleri) projeye henüz verilmedi.
+
+**Etki:** CLAUDE.md kural 6 sözleşmeyi uydurmayı yasaklar → `MetropolApiClient` endpoint metotları ve `IMetropolAuthClient`'ın HTTP implementasyonu (getdate/GenerateToken URL'leri) yazılamadı; TODO 1.3'te iki madde `[!]`. Sözleşmeden bağımsız kısımlar tamamlandı: AES helper, token cache + single-flight (`MetropolTokenService`), maskeleme, kısmi hata kataloğu. Token akışı için `Models/AccessTokenModels.cs` içinde minimal geçici tipler tanımlandı (AES anahtarının UTF-8/16 bayt kodlaması ve `AccessData` JSON alan adları VARSAYIMDIR).
+
+**Gereken:** Gerçek `MetropolModels.cs` dosyasının sağlanması (proje sahibi/Metropol tarafı). Dosya gelince: placeholder'a taşı + namespace düzenle, `AccessTokenModels.cs` ile birleştir, varsayımları (anahtar kodlaması, alan adları) teyit et, `MetropolApiClient` + `IMetropolAuthClient` HTTP implementasyonunu yaz, hata kodu tablosunu genişlet.
+
+---
+
 ## 2026-06-10 — RN native projeleri (android/ios) bu ortamda üretilemedi (Faz 0.4)
 
 **Belirti/kısıt:** `npx react-native init` boş olmayan klasöre kurulamaz; ayrıca iOS native projesi yalnızca macOS'ta üretilir/derlenir — bu makine Windows Server.

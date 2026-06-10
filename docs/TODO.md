@@ -53,22 +53,22 @@
 - [x] Rol/yetki attribute'ları (endpoint guard) — `PolicyNames`: PlatformAdmin/CompanyAdmin/Approver/TenantUser
 
 ### 1.2 Auth (BACKEND + MOBILE)
-- [ ] `POST /auth/otp/send` (rate-limit, Redis)
-- [ ] `POST /auth/otp/verify` (3 deneme kilidi)
-- [ ] `POST /auth/refresh`, `POST /auth/logout`
+- [x] `POST /auth/otp/send` (rate-limit, Redis) — AuthService + IDistributedCache store'lar (`Redis.Enabled=true` → Redis, değilse in-memory); telefon başına 60 sn resend penceresi, OTP yalnızca SHA256 hash saklanır, Dev'de `Auth:DevFixedOtp=123456`
+- [x] `POST /auth/otp/verify` (3 deneme kilidi) — 3 hatalı denemede `OTP_LOCKED` (423); refresh hash'i store'a yazılır, `isNewUser` = ad boş
+- [x] `POST /auth/refresh`, `POST /auth/logout` — rotasyon: TakeAsync (oku+sil), eski refresh ikinci kullanımda `REFRESH_INVALID` (401); logout her durumda 204 — 12 unit test (AuthServiceTests)
 - [ ] Mobile: splash, telefon girişi, OTP ekranı, profil tamamlama, biyometrik
 - [ ] Mobile: token saklama (secure storage), sessiz yenileme, login'e düşme
 
 ### 1.3 Metropol entegrasyon katmanı (BACKEND — KRİTİK)
-- [ ] `MetropolModels.cs` taşı + namespace düzenle
-- [ ] AES helper (CBC/PKCS7/IV=16 sıfır/128-bit) + Base64 — **unit test**
-- [ ] `GenerateToken` + `getdate` ile saat farkı çözümü
-- [ ] Token cache (Redis) + single-flight yenileme (4 dk eşik)
-- [ ] İki base URL (auth/api) konfigürasyonu
-- [ ] `MetropolApiClient` (tüm endpoint'ler için tipli metotlar)
-- [ ] Hata kodu → Türkçe mesaj eşleme tablosu
-- [ ] Maskeleme yardımcıları (kart no, isim, TCKN)
-- [ ] **Sır yönetimi:** AccessKey/AESKey/ConsumerId env/secret'tan
+- [!] `MetropolModels.cs` taşı + namespace düzenle — kaynak dosya bekleniyor (repodaki 0-byte placeholder; bkz. `LESSONS.md`)
+- [x] AES helper (CBC/PKCS7/IV=16 sıfır/128-bit) + Base64 — **unit test** (`AesEncryptionHelper` + roundtrip/determinizm/anahtar testleri)
+- [x] `GenerateToken` + `getdate` ile saat farkı çözümü — akış `MetropolTokenService`'te; `IMetropolAuthClient` HTTP implementasyonu sözleşme dosyası gelince
+- [x] Token cache (Redis) + single-flight yenileme (4 dk eşik) — IDistributedCache + process-içi kilit (dağıtık kilit ileride), 4 test
+- [x] İki base URL (auth/api) konfigürasyonu — `MetropolOptions.AuthBaseUrl/ApiBaseUrl` (Faz 0'dan beri)
+- [!] `MetropolApiClient` (tüm endpoint'ler için tipli metotlar) — kaynak dosya bekleniyor (`ApiEndpoints` sabitleri gerçek `MetropolModels.cs` içinde)
+- [x] Hata kodu → Türkçe mesaj eşleme tablosu — `MetropolErrorCatalog` KISMİ (7601/7085 + genel mesaj); tam tablo doküman gelince
+- [x] Maskeleme yardımcıları (kart no, isim, TCKN) — `Application/Common/Masking` (+telefon), unit testli
+- [x] **Sır yönetimi:** AccessKey/AESKey/ConsumerId env/secret'tan — `MetropolOptions` configuration'dan bağlanır, repoda gerçek değer yok
 
 ### 1.4 Kart yönetimi (BACKEND + MOBILE)
 - [ ] Entity: Card (user-kart bağı, UserAccountToken, maskeli no)

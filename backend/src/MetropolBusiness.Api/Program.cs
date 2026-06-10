@@ -7,6 +7,7 @@ using MetropolBusiness.Infrastructure.Identity;
 using MetropolBusiness.Integration.Gemini;
 using MetropolBusiness.Integration.Metropol;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.AspNetCore.Mvc;
 using Microsoft.IdentityModel.Tokens;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -19,7 +20,24 @@ builder.Logging.AddJsonConsole(options =>
     options.TimestampFormat = "yyyy-MM-ddTHH:mm:ss.fffZ ";
 });
 
-builder.Services.AddControllers();
+builder.Services.AddControllers()
+    .ConfigureApiBehaviorOptions(options =>
+    {
+        // Otomatik model doğrulama 400'ü de ortak hata zarfını kullanır (API_CONTRACT §0.2).
+        options.InvalidModelStateResponseFactory = context =>
+        {
+            var fields = context.ModelState
+                .Where(kvp => kvp.Value is { Errors.Count: > 0 })
+                .ToDictionary(
+                    kvp => kvp.Key,
+                    kvp => kvp.Value!.Errors.Select(e => e.ErrorMessage).ToArray());
+
+            return new BadRequestObjectResult(new ErrorResponse(
+                ErrorCodes.ValidationError,
+                "Geçersiz istek. Lütfen alanları kontrol edin.",
+                fields));
+        };
+    });
 builder.Services.AddHealthChecks();
 
 // Tenant bağlamı: her istekte JWT claim'lerinden okunur (ARCHITECTURE §3.2).

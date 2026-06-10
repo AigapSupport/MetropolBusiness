@@ -445,6 +445,7 @@ Onay bekleyenler (yetki: approver/segment).
 | `OTP_INVALID` | 400 | OTP yanlış |
 | `OTP_LOCKED` | 423 | OTP deneme kilidi |
 | `OTP_RATE_LIMIT` | 429 | çok fazla OTP isteği |
+| `REFRESH_INVALID` | 401 | refresh token geçersiz/süresi dolmuş/zaten kullanılmış (rotasyon) |
 | `SURVEY_ALREADY_ANSWERED` | 409 | tek seferlik anket |
 | `DUPLICATE_OPERATION` | 409 | idempotency tekrarı |
 | `METROPOL_ERROR` | 422 | Metropol iş kuralı reddi (details.providerCode ops.) |
