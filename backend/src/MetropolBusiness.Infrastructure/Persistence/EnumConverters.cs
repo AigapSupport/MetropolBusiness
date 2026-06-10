@@ -19,6 +19,12 @@ internal static class EnumConverters
     public static readonly ValueConverter<TenantStatus, string> TenantStatusConverter =
         new(status => TenantStatusToDb(status), value => TenantStatusFromDb(value));
 
+    public static readonly ValueConverter<ContentStatus, string> ContentStatusConverter =
+        new(status => ContentStatusToDb(status), value => ContentStatusFromDb(value));
+
+    public static readonly ValueConverter<SurveyQuestionType, string> SurveyQuestionTypeConverter =
+        new(type => SurveyQuestionTypeToDb(type), value => SurveyQuestionTypeFromDb(value));
+
     private static string UserRoleToDb(UserRole role) => role switch
     {
         UserRole.EndUser => "enduser",
@@ -64,6 +70,40 @@ internal static class EnumConverters
         "pending" => TenantStatus.Pending,
         "active" => TenantStatus.Active,
         "passive" => TenantStatus.Passive,
+        _ => throw new ArgumentOutOfRangeException(nameof(value), value, null),
+    };
+
+    // İçerik sözlükleri DTO eşlemesinde de kullanılır (ContentService); bu yüzden internal-görünür.
+
+    internal static string ContentStatusToDb(ContentStatus status) => status switch
+    {
+        ContentStatus.Draft => "draft",
+        ContentStatus.Published => "published",
+        _ => throw new ArgumentOutOfRangeException(nameof(status), status, null),
+    };
+
+    internal static ContentStatus ContentStatusFromDb(string value) => value switch
+    {
+        "draft" => ContentStatus.Draft,
+        "published" => ContentStatus.Published,
+        _ => throw new ArgumentOutOfRangeException(nameof(value), value, null),
+    };
+
+    internal static string SurveyQuestionTypeToDb(SurveyQuestionType type) => type switch
+    {
+        SurveyQuestionType.Single => "single",
+        SurveyQuestionType.Multi => "multi",
+        SurveyQuestionType.Text => "text",
+        SurveyQuestionType.Rating => "rating",
+        _ => throw new ArgumentOutOfRangeException(nameof(type), type, null),
+    };
+
+    internal static SurveyQuestionType SurveyQuestionTypeFromDb(string value) => value switch
+    {
+        "single" => SurveyQuestionType.Single,
+        "multi" => SurveyQuestionType.Multi,
+        "text" => SurveyQuestionType.Text,
+        "rating" => SurveyQuestionType.Rating,
         _ => throw new ArgumentOutOfRangeException(nameof(value), value, null),
     };
 }

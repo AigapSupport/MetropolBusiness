@@ -1,6 +1,7 @@
 {
   "common": {
     "continue": "Devam Et",
+    "back": "Geri",
     "comingSoon": "Bu ekran hazırlanıyor",
     "loading": "Yükleniyor..."
   },
@@ -13,10 +14,31 @@
   },
   "auth": {
     "splashTitle": "MetropolBusiness",
-    "phoneTitle": "Telefon ile Giriş",
-    "otpTitle": "Doğrulama Kodu",
-    "completeProfileTitle": "Profil Tamamlama",
-    "devLogin": "Geçici Giriş (geliştirme)"
+    "phoneHeading": "Telefon numaranız",
+    "phoneSubtitle": "Doğrulama kodu göndereceğiz. Numaranız firma kaydınızla eşleşmeli.",
+    "phoneLabel": "Cep Telefonu",
+    "phonePlaceholder": "5XX XXX XX XX",
+    "kvkkConsent": "KVKK Aydınlatma Metni'ni ve Kullanım Koşulları'nı okudum, onaylıyorum.",
+    "sendCode": "Kod Gönder",
+    "otpHeading": "Doğrulama kodu",
+    "otpSubtitle": "{{phone}} numarasına gönderilen 6 haneli kodu girin.",
+    "resendCountdown": "Kodu tekrar gönder · {{time}}",
+    "resend": "Kodu tekrar gönder",
+    "verifyAndLogin": "Doğrula ve Giriş Yap",
+    "completeProfileHeading": "Profilinizi tamamlayın",
+    "completeProfileSubtitle": "Firma kaydınızı tamamlamak için bilgilerinizi girin.",
+    "firstNameLabel": "Ad",
+    "firstNamePlaceholder": "Adınız",
+    "lastNameLabel": "Soyad",
+    "lastNamePlaceholder": "Soyadınız",
+    "emailLabel": "Kurumsal E-posta",
+    "emailPlaceholder": "ad@firma.com",
+    "errors": {
+      "otpInvalid": "Kod hatalı. Lütfen kontrol edip tekrar deneyin.",
+      "otpLocked": "Çok fazla hatalı deneme yapıldı. Lütfen yeni kod isteyin.",
+      "otpRateLimit": "Çok sık kod istediniz. Lütfen biraz bekleyip tekrar deneyin.",
+      "generic": "Bir şeyler ters gitti. Lütfen tekrar deneyin."
+    }
   },
   "account": {
     "title": "Hesabım"

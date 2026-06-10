@@ -5,7 +5,8 @@
 export type AuthStackParamList = {
   Splash: undefined;
   PhoneLogin: undefined;
-  Otp: undefined;
+  /** OTP ekranı — gönderim yanıtındaki referans ve sayaç süresiyle açılır. */
+  Otp: { phone: string; otpRef: string; resendInSeconds: number };
   CompleteProfile: undefined;
 };
 

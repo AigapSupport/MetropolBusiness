@@ -1,10 +1,13 @@
 /**
  * İnce fetch sarmalayıcı API istemcisi.
  * - Base URL: src/utils/config.ts (TODO Faz 1: react-native-config ile .env'den)
- * - Authorization: Bearer <accessToken> — auth store setAuthToken ile besler.
+ * - Authorization: Bearer <accessToken> — auth store setAuthTokens ile besler.
  * - Hata zarfı: ErrorResponse (docs/API_CONTRACT.md §0.2) → ApiError olarak fırlatılır.
- * - TODO(Faz 1.2): 401 yanıtında refresh token ile sessiz yenileme ve isteği tekrarlama.
+ * - 401'de bir kez POST /auth/refresh denenir (eş zamanlı istekler tek refresh
+ *   promise'ini paylaşır); başarılıysa istek tekrarlanır, refresh geçersizse
+ *   onSessionExpired tetiklenir (auth store logout → RootNavigator login'e düşer).
  */
+import type { RefreshRequest, RefreshResponse } from '@shared/auth';
 import { ErrorCodes } from '@shared/common';
 import type { ErrorResponse, Paged } from '@shared/common';
 
@@ -22,14 +25,92 @@ export class ApiError extends Error {
   }
 }
 
-let accessToken: string | null = null;
+/** Oturum token çifti — istemcinin Authorization + refresh için tuttuğu değerler. */
+export interface SessionTokens {
+  accessToken: string;
+  refreshToken: string;
+}
 
-/** Auth store, oturum açılınca/kapanınca çağırır. */
-export function setAuthToken(token: string | null): void {
-  accessToken = token;
+let accessToken: string | null = null;
+let refreshToken: string | null = null;
+
+/** Sessiz yenileme sonuçlarını auth store'a bildiren kancalar. */
+export interface AuthSessionHandlers {
+  /** Refresh başarılı — yeni token çifti kalıcı depoya yazılmalı. */
+  onTokensRefreshed: (tokens: SessionTokens) => void;
+  /** Refresh geçersiz — oturum kapatılmalı (login'e düşme). */
+  onSessionExpired: () => void;
+}
+
+let sessionHandlers: AuthSessionHandlers | null = null;
+
+/** AuthProvider mount olurken kancaları bağlar, unmount'ta null'lar. */
+export function configureAuthSession(handlers: AuthSessionHandlers | null): void {
+  sessionHandlers = handlers;
+}
+
+/** Auth store, oturum açılınca/kapanınca/yenilenince çağırır. */
+export function setAuthTokens(tokens: SessionTokens | null): void {
+  if (tokens === null) {
+    accessToken = null;
+    refreshToken = null;
+    return;
+  }
+  accessToken = tokens.accessToken;
+  refreshToken = tokens.refreshToken;
 }
 
 type HttpMethod = 'GET' | 'POST' | 'PUT' | 'PATCH' | 'DELETE';
+
+/**
+ * Refresh denemesinin sonucu:
+ * - refreshed: yeni token alındı, istek tekrarlanabilir
+ * - invalid: refresh token geçersiz (REFRESH_INVALID) — oturum düşmeli
+ * - unavailable: ağ/sunucu sorunu — oturum düşürülmez, asıl hata yüzeye çıkar
+ */
+type RefreshOutcome = 'refreshed' | 'invalid' | 'unavailable';
+
+let refreshPromise: Promise<RefreshOutcome> | null = null;
+
+/** Eş zamanlı 401'lerde tek refresh isteği paylaşılır (single-flight). */
+function refreshSession(): Promise<RefreshOutcome> {
+  if (refreshPromise === null) {
+    refreshPromise = requestRefresh().finally(() => {
+      refreshPromise = null;
+    });
+  }
+  return refreshPromise;
+}
+
+/** POST /auth/refresh — özyineleme olmaması için request() yerine ham fetch kullanır. */
+async function requestRefresh(): Promise<RefreshOutcome> {
+  if (refreshToken === null) {
+    return 'invalid';
+  }
+  try {
+    const body: RefreshRequest = { refreshToken };
+    const response = await fetch(`${config.apiBaseUrl}/auth/refresh`, {
+      method: 'POST',
+      headers: { Accept: 'application/json', 'Content-Type': 'application/json' },
+      body: JSON.stringify(body),
+    });
+    if (!response.ok) {
+      // 401 = REFRESH_INVALID (rotasyon/iptal); diğer durumlar geçici kabul edilir.
+      return response.status === 401 ? 'invalid' : 'unavailable';
+    }
+    const data = (await response.json()) as RefreshResponse;
+    accessToken = data.accessToken;
+    refreshToken = data.refreshToken;
+    sessionHandlers?.onTokensRefreshed({
+      accessToken: data.accessToken,
+      refreshToken: data.refreshToken,
+    });
+    return 'refreshed';
+  } catch {
+    // Ağ hatasında oturum düşürülmez; çağıran isteğin kendi hatası gösterilir.
+    return 'unavailable';
+  }
+}
 
 function isErrorResponse(value: unknown): value is ErrorResponse {
   if (typeof value !== 'object' || value === null) {
@@ -59,6 +140,7 @@ async function request<TResponse>(
   method: HttpMethod,
   path: string,
   body?: unknown,
+  isRetry = false,
 ): Promise<TResponse> {
   const headers: Record<string, string> = { Accept: 'application/json' };
   if (accessToken !== null) {
@@ -74,7 +156,17 @@ async function request<TResponse>(
     body: body !== undefined ? JSON.stringify(body) : undefined,
   });
 
-  // TODO(Faz 1.2): response.status === 401 → refresh akışı (POST /auth/refresh) sonrası retry.
+  // 401 → bir kez sessiz yenileme (auth uçları hariç; onların 401'i iş hatasıdır).
+  if (response.status === 401 && !isRetry && refreshToken !== null && !path.startsWith('/auth/')) {
+    const outcome = await refreshSession();
+    if (outcome === 'refreshed') {
+      return request<TResponse>(method, path, body, true);
+    }
+    if (outcome === 'invalid') {
+      sessionHandlers?.onSessionExpired();
+    }
+  }
+
   if (!response.ok) {
     throw new ApiError(response.status, await toErrorResponse(response));
   }

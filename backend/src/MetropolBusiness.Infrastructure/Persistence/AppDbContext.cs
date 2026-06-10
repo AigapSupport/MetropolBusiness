@@ -22,6 +22,13 @@ public class AppDbContext(DbContextOptions<AppDbContext> options, ITenantContext
     public DbSet<UserSegment> UserSegments => Set<UserSegment>();
     public DbSet<Module> Modules => Set<Module>();
     public DbSet<SegmentModule> SegmentModules => Set<SegmentModule>();
+    public DbSet<Announcement> Announcements => Set<Announcement>();
+    public DbSet<AnnouncementSegment> AnnouncementSegments => Set<AnnouncementSegment>();
+    public DbSet<Survey> Surveys => Set<Survey>();
+    public DbSet<SurveyQuestion> SurveyQuestions => Set<SurveyQuestion>();
+    public DbSet<SurveyResponse> SurveyResponses => Set<SurveyResponse>();
+    public DbSet<Video> Videos => Set<Video>();
+    public DbSet<VideoWatch> VideoWatches => Set<VideoWatch>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -40,6 +47,26 @@ public class AppDbContext(DbContextOptions<AppDbContext> options, ITenantContext
             .HasQueryFilter(us => us.Segment!.TenantId == _tenantContext.TenantId);
         modelBuilder.Entity<SegmentModule>()
             .HasQueryFilter(sm => sm.Segment!.TenantId == _tenantContext.TenantId);
+
+        // Duyuru ÖZEL filtre (ARCHITECTURE §3.4): TenantId null = platform/global içerik,
+        // HER tenant'a görünür; dolu ise yalnızca o tenant'a. ITenantOwned değildir!
+        modelBuilder.Entity<Announcement>()
+            .HasQueryFilter(a => a.TenantId == null || a.TenantId == _tenantContext.TenantId);
+        modelBuilder.Entity<AnnouncementSegment>()
+            .HasQueryFilter(x =>
+                x.Announcement!.TenantId == null || x.Announcement!.TenantId == _tenantContext.TenantId);
+
+        // Anket/video tenant filtreli; çocuk tablolar ebeveynin tenant'ı üzerinden filtrelenir.
+        modelBuilder.Entity<Survey>()
+            .HasQueryFilter(s => s.TenantId == _tenantContext.TenantId);
+        modelBuilder.Entity<SurveyQuestion>()
+            .HasQueryFilter(q => q.Survey!.TenantId == _tenantContext.TenantId);
+        modelBuilder.Entity<SurveyResponse>()
+            .HasQueryFilter(r => r.Survey!.TenantId == _tenantContext.TenantId);
+        modelBuilder.Entity<Video>()
+            .HasQueryFilter(v => v.TenantId == _tenantContext.TenantId);
+        modelBuilder.Entity<VideoWatch>()
+            .HasQueryFilter(w => w.Video!.TenantId == _tenantContext.TenantId);
     }
 
     public override Task<int> SaveChangesAsync(CancellationToken cancellationToken = default)

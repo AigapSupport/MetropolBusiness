@@ -1,6 +1,7 @@
 {
   "common": {
     "continue": "Continue",
+    "back": "Back",
     "comingSoon": "This screen is under construction",
     "loading": "Loading..."
   },
@@ -13,10 +14,31 @@
   },
   "auth": {
     "splashTitle": "MetropolBusiness",
-    "phoneTitle": "Sign in with Phone",
-    "otpTitle": "Verification Code",
-    "completeProfileTitle": "Complete Profile",
-    "devLogin": "Temporary Login (dev)"
+    "phoneHeading": "Your phone number",
+    "phoneSubtitle": "We'll send a verification code. Your number must match your company record.",
+    "phoneLabel": "Mobile Phone",
+    "phonePlaceholder": "5XX XXX XX XX",
+    "kvkkConsent": "I have read and accept the KVKK Privacy Notice and the Terms of Use.",
+    "sendCode": "Send Code",
+    "otpHeading": "Verification code",
+    "otpSubtitle": "Enter the 6-digit code sent to {{phone}}.",
+    "resendCountdown": "Resend code · {{time}}",
+    "resend": "Resend code",
+    "verifyAndLogin": "Verify and Sign In",
+    "completeProfileHeading": "Complete your profile",
+    "completeProfileSubtitle": "Enter your details to complete your company registration.",
+    "firstNameLabel": "First Name",
+    "firstNamePlaceholder": "Your first name",
+    "lastNameLabel": "Last Name",
+    "lastNamePlaceholder": "Your last name",
+    "emailLabel": "Corporate Email",
+    "emailPlaceholder": "name@company.com",
+    "errors": {
+      "otpInvalid": "Incorrect code. Please check and try again.",
+      "otpLocked": "Too many incorrect attempts. Please request a new code.",
+      "otpRateLimit": "You requested codes too often. Please wait and try again.",
+      "generic": "Something went wrong. Please try again."
+    }
   },
   "account": {
     "title": "My Account"

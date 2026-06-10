@@ -1,6 +1,8 @@
 using MetropolBusiness.Application.Auth;
+using MetropolBusiness.Application.Content;
 using MetropolBusiness.Infrastructure.Auth;
 using MetropolBusiness.Infrastructure.Cache;
+using MetropolBusiness.Infrastructure.Content;
 using MetropolBusiness.Infrastructure.Identity;
 using MetropolBusiness.Infrastructure.Persistence;
 using MetropolBusiness.Infrastructure.Sms;
@@ -45,6 +47,10 @@ public static class DependencyInjection
 
             // AuthService AppDbContext ister; DB'siz ortamda auth uçları da devre dışı kalır.
             services.AddScoped<IAuthService, AuthService>();
+
+            // İçerik servisleri de AppDbContext ister (TODO 1.8).
+            services.AddScoped<IContentService, ContentService>();
+            services.AddScoped<IContentAdminService, ContentAdminService>();
         }
 
         services.AddScoped<IJwtTokenService, JwtTokenService>();

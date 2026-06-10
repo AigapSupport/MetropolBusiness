@@ -56,8 +56,9 @@
 - [x] `POST /auth/otp/send` (rate-limit, Redis) — AuthService + IDistributedCache store'lar (`Redis.Enabled=true` → Redis, değilse in-memory); telefon başına 60 sn resend penceresi, OTP yalnızca SHA256 hash saklanır, Dev'de `Auth:DevFixedOtp=123456`
 - [x] `POST /auth/otp/verify` (3 deneme kilidi) — 3 hatalı denemede `OTP_LOCKED` (423); refresh hash'i store'a yazılır, `isNewUser` = ad boş
 - [x] `POST /auth/refresh`, `POST /auth/logout` — rotasyon: TakeAsync (oku+sil), eski refresh ikinci kullanımda `REFRESH_INVALID` (401); logout her durumda 204 — 12 unit test (AuthServiceTests)
-- [ ] Mobile: splash, telefon girişi, OTP ekranı, profil tamamlama, biyometrik
-- [ ] Mobile: token saklama (secure storage), sessiz yenileme, login'e düşme
+- [x] Mobile: splash, telefon girişi, OTP ekranı, profil tamamlama — prototipten (screens-auth.jsx) taşındı; otp/send+verify React Query hook'larıyla bağlı, OTP_INVALID/OTP_LOCKED/OTP_RATE_LIMIT mesajları localization'dan; profil tamamlama şimdilik lokal (PUT /me ucu gelince bağlanacak)
+- [~] Mobile: biyometrik giriş — native klasörler gelince tamamlanacak (LESSONS.md RN native kaydı); authStore'da `biometricEnabled` placeholder + ekran TODO'ları
+- [x] Mobile: token saklama (secure storage), sessiz yenileme, login'e düşme — `tokenStorage.ts` (Keychain/Keystore + bu ortamda in-memory fallback), 401'de tek uçuş refresh + istek tekrarı, refresh geçersizse logout → RootNavigator login'e düşer
 
 ### 1.3 Metropol entegrasyon katmanı (BACKEND — KRİTİK)
 - [!] `MetropolModels.cs` taşı + namespace düzenle — kaynak dosya bekleniyor (repodaki 0-byte placeholder; bkz. `LESSONS.md`)
@@ -106,10 +107,10 @@
 - [ ] **Test:** transfer idempotent
 
 ### 1.8 Ana Sayfa içerik (BACKEND + WEB + MOBILE)
-- [ ] Entity: Announcement, Survey, SurveyQuestion, SurveyResponse, Video, VideoWatch
-- [ ] Backend: home announcements/surveys/videos uçları (firma+global ayrımı)
-- [ ] Backend: anket yanıt + tek seferlik kontrol
-- [ ] Backend: video izleme durumu (kullanıcı bazlı)
+- [x] Entity: Announcement, Survey, SurveyQuestion, SurveyResponse, Video, VideoWatch — Announcement.TenantId nullable (null=global), migration `ContentEntities`, UNIQUE(survey_id,user_id) + UNIQUE(video_id,user_id)
+- [x] Backend: home announcements/surveys/videos uçları (firma+global ayrımı) — `HomeController` (API_CONTRACT §3), duyuru filtresi `tenant_id IS NULL OR = aktif` + segment hedefleme; firma admin CRUD da hazır: `CompanyContentController` (§12 İçerik: anket/duyuru/video CRUD + results + watch-report)
+- [x] Backend: anket yanıt + tek seferlik kontrol — ikinci yanıt 409 `SURVEY_ALREADY_ANSWERED`; tek seferlik olmayanda upsert; soru id doğrulaması (14 yeni test, `ContentServiceTests`)
+- [x] Backend: video izleme durumu (kullanıcı bazlı) — `POST /home/videos/{id}/watch` upsert, completed→Watched+WatchedAt
 - [ ] Web (firma admin): anket CRUD, duyuru CRUD, video ekleme + segment hedefleme
 - [ ] Mobile: duyuru carousel + detay
 - [ ] Mobile: anket listesi + doldurma (soru tipleri, ilerleme)
