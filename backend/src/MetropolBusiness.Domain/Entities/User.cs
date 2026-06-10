@@ -20,6 +20,13 @@ public class User : BaseEntity, ITenantOwned, ISoftDeletable
     /// <summary>Şifrelenmiş TCKN — düz metin asla saklanmaz/log'lanmaz (CLAUDE.md kural 4).</summary>
     public string? TcknEncrypted { get; set; }
 
+    /// <summary>
+    /// Panel girişi şifre hash'i (PBKDF2, "pbkdf2$..." biçimi) — YALNIZCA panel
+    /// kullanıcılarında (company_admin/approver/platform_admin) doludur; mobil son
+    /// kullanıcı OTP ile girer ve bu alan null kalır. Düz şifre asla saklanmaz/log'lanmaz.
+    /// </summary>
+    public string? PasswordHash { get; set; }
+
     public string? City { get; set; }
     public string? AvatarUrl { get; set; }
 

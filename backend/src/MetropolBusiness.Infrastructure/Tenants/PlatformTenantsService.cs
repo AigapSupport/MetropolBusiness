@@ -1,3 +1,4 @@
+using MetropolBusiness.Application.Auth;
 using MetropolBusiness.Application.Common;
 using MetropolBusiness.Application.Tenants;
 using MetropolBusiness.Domain.Entities;
@@ -18,6 +19,7 @@ namespace MetropolBusiness.Infrastructure.Tenants;
 /// </summary>
 public sealed class PlatformTenantsService(
     AppDbContext dbContext,
+    IPanelAuthService panelAuthService,
     ILogger<PlatformTenantsService> logger) : IPlatformTenantsService
 {
     private const int DefaultPageSize = 20;
@@ -271,7 +273,12 @@ public sealed class PlatformTenantsService(
         dbContext.Users.Add(admin);
         await dbContext.SaveChangesAsync(cancellationToken);
 
-        // PII'siz log: telefon/e-posta/ad YAZILMAZ; yalnızca id + aksiyon (CLAUDE.md kural 4).
+        // Şifre belirleme daveti (POST /auth/set-password, 72 saat, tek kullanımlık).
+        // E-posta gönderimi YOK — TODO: e-posta altyapısı gelince davet maili eklenecek;
+        // şimdilik token'ı admin UI gösterir. TOKEN LOG'A YAZILMAZ (CLAUDE.md kural 4).
+        var inviteToken = await panelAuthService.CreateInviteAsync(admin.Id, cancellationToken);
+
+        // PII'siz log: telefon/e-posta/ad/token YAZILMAZ; yalnızca id + aksiyon (CLAUDE.md kural 4).
         logger.LogInformation(
             "Platform aksiyonu: {Action} TenantId={TenantId} UserId={UserId}",
             "tenant_admin_invited", tenantId, admin.Id);
@@ -281,7 +288,8 @@ public sealed class PlatformTenantsService(
             tenantId,
             admin.FirstName,
             admin.LastName,
-            IdentityEnumMapping.RoleToWire(admin.Role)));
+            IdentityEnumMapping.RoleToWire(admin.Role),
+            inviteToken));
     }
 
     private static PlatformTenantDto ToTenantDto(Tenant tenant, int userCount) => new(

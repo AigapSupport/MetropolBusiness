@@ -3,6 +3,8 @@
   <ItemGroup>
     <ProjectReference Include="..\MetropolBusiness.Application\MetropolBusiness.Application.csproj" />
     <ProjectReference Include="..\MetropolBusiness.Domain\MetropolBusiness.Domain.csproj" />
+    <!-- Kart/bakiye servisleri IMetropolApiClient kullanır (TODO 1.4/1.5). -->
+    <ProjectReference Include="..\MetropolBusiness.Integration.Metropol\MetropolBusiness.Integration.Metropol.csproj" />
   </ItemGroup>
 
   <ItemGroup>

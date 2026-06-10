@@ -56,14 +56,17 @@ public sealed record TenantAdminInviteRequest(
 
 /// <summary>
 /// Davet yanıtı — PII'siz: oluşturulan admin'in kimliği + tenant + rol döner,
-/// telefon/e-posta geri yansıtılmaz.
+/// telefon/e-posta geri yansıtılmaz. InviteToken: şifre belirleme daveti
+/// (POST /auth/set-password, 72 saat geçerli, tek kullanımlık) — YALNIZCA bu yanıtta
+/// döner (admin UI gösterir), tekrar sorgulanamaz ve LOG'A YAZILMAZ (CLAUDE.md kural 4).
 /// </summary>
 public sealed record TenantAdminCreatedDto(
     Guid Id,
     Guid TenantId,
     string? FirstName,
     string? LastName,
-    string Role);
+    string Role,
+    string InviteToken);
 
 /// <summary>Modül tanımı (GET /platform/modules): { code, name, isActive }.</summary>
 public sealed record PlatformModuleDto(Guid Id, string Code, string Name, bool IsActive);

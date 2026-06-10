@@ -1,3 +1,4 @@
+using MetropolBusiness.Application.Auth;
 using MetropolBusiness.Application.Common;
 using MetropolBusiness.Application.Tenants;
 using MetropolBusiness.Domain.Entities;
@@ -262,6 +263,8 @@ public sealed class AdminServicesTests : IDisposable
         Assert.True(result.IsSuccess);
         Assert.Equal(TenantB, result.Value.TenantId);
         Assert.Equal("company_admin", result.Value.Role);
+        // Şifre belirleme daveti yanıtla döner (yalnızca bir kez; log'lanmaz).
+        Assert.Equal(FakePanelAuthService.Token, result.Value.InviteToken);
 
         // DB doğrulaması: kullanıcı hedef tenant'ta company_admin rolüyle açıldı.
         // IgnoreQueryFilters: test platform admin bağlamında (tenant claim'i yok) doğrular.
@@ -343,6 +346,7 @@ public sealed class AdminServicesTests : IDisposable
     /// <summary>Platform admin bağlamı: tenant claim'i YOK (tenant-üstü, ARCHITECTURE §3.2).</summary>
     private PlatformTenantsService CreatePlatformTenantsService() => new(
         CreateContext(tenantId: null, userId: Guid.NewGuid(), isPlatformAdmin: true),
+        new FakePanelAuthService(),
         NullLogger<PlatformTenantsService>.Instance);
 
     /// <summary>Branding ucu anonimdir: tenant da kullanıcı da yoktur.</summary>
@@ -368,5 +372,22 @@ public sealed class AdminServicesTests : IDisposable
         public bool IsPlatformAdmin => isPlatformAdmin;
         public Guid RequiredTenantId => TenantId
             ?? throw new InvalidOperationException("Tenant bağlamı yok.");
+    }
+
+    /// <summary>Davet token üretimi sahte: davet akışının kendisi PanelAuthServiceTests'te test edilir.</summary>
+    private sealed class FakePanelAuthService : IPanelAuthService
+    {
+        public const string Token = "fake-invite-token";
+
+        public Task<Result<PanelLoginResponse>> LoginAsync(
+            PanelLoginRequest request, CancellationToken cancellationToken = default) =>
+            throw new NotSupportedException();
+
+        public Task<Result<bool>> SetPasswordAsync(
+            SetPasswordRequest request, CancellationToken cancellationToken = default) =>
+            throw new NotSupportedException();
+
+        public Task<string> CreateInviteAsync(Guid userId, CancellationToken cancellationToken = default) =>
+            Task.FromResult(Token);
     }
 }

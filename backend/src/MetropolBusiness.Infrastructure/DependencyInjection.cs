@@ -1,12 +1,16 @@
 using MetropolBusiness.Application.Auth;
+using MetropolBusiness.Application.Cards;
 using MetropolBusiness.Application.Common;
 using MetropolBusiness.Application.Content;
+using MetropolBusiness.Application.Payments;
 using MetropolBusiness.Application.Tenants;
 using MetropolBusiness.Application.Users;
 using MetropolBusiness.Infrastructure.Auth;
 using MetropolBusiness.Infrastructure.Cache;
+using MetropolBusiness.Infrastructure.Cards;
 using MetropolBusiness.Infrastructure.Content;
 using MetropolBusiness.Infrastructure.Identity;
+using MetropolBusiness.Infrastructure.Payments;
 using MetropolBusiness.Infrastructure.Persistence;
 using MetropolBusiness.Infrastructure.Security;
 using MetropolBusiness.Infrastructure.Sms;
@@ -54,6 +58,9 @@ public static class DependencyInjection
             // AuthService AppDbContext ister; DB'siz ortamda auth uçları da devre dışı kalır.
             services.AddScoped<IAuthService, AuthService>();
 
+            // Panel girişi (e-posta+şifre, TODO 1.9 — PANELS_SPEC §0.4 kararı).
+            services.AddScoped<IPanelAuthService, PanelAuthService>();
+
             // İçerik servisleri de AppDbContext ister (TODO 1.8).
             services.AddScoped<IContentService, ContentService>();
             services.AddScoped<IContentAdminService, ContentAdminService>();
@@ -65,11 +72,24 @@ public static class DependencyInjection
             services.AddScoped<IPlatformTenantsService, PlatformTenantsService>();
             services.AddScoped<IPlatformModulesService, PlatformModulesService>();
             services.AddScoped<ITenantBrandingService, TenantBrandingService>();
+
+            // Kart + bakiye/işlem servisleri (TODO 1.4/1.5 backend) — AppDbContext ve
+            // IMetropolApiClient (AddMetropolIntegration kaydı) gerektirir.
+            services.AddScoped<ICardsService, CardsService>();
+            services.AddScoped<IBalanceService, BalanceService>();
+
+            // Harcama + transfer servisleri (TODO 1.6/1.7 backend) — parasal uçlar,
+            // payment_idempotency ile çift işlem engeli (ARCHITECTURE §5.3).
+            services.AddScoped<IPaymentsService, PaymentsService>();
+            services.AddScoped<ITransfersService, TransfersService>();
         }
 
         // At-rest alan şifrelemesi — şimdilik placeholder; gerçek (DataProtection/KMS)
         // implementasyon Faz sonrası yalnızca bu kaydı değiştirerek devreye girer.
         services.AddSingleton<IFieldCipher, PlaceholderFieldCipher>();
+
+        // Panel şifre hash'leme — durumsuz, singleton yeterli.
+        services.AddSingleton<IPasswordHasher, Pbkdf2PasswordHasher>();
 
         services.AddScoped<IJwtTokenService, JwtTokenService>();
         services.AddSingleton<IOtpStore, DistributedCacheOtpStore>();

@@ -72,39 +72,39 @@
 - [x] **Sır yönetimi:** AccessKey/AESKey/ConsumerId env/secret'tan — `MetropolOptions` configuration'dan bağlanır, repoda gerçek değer yok
 
 ### 1.4 Kart yönetimi (BACKEND + MOBILE)
-- [ ] Entity: Card (user-kart bağı, UserAccountToken, maskeli no)
-- [ ] `AddAccount` → ValidationGuid akışı (proxy)
-- [ ] `AddAccountConfirm` → UserAccountToken sakla
-- [ ] Kart listeleme (kullanıcının kartları)
-- [ ] `DeleteUser` (kart bağını kaldır)
+- [x] Entity: Card (user-kart bağı, UserAccountToken, maskeli no) — `Domain/Entities/Card.cs` (token IFieldCipher ile ŞİFRELİ, düz kolon yok) + `CardsAndPayments` migration'ı (Faz 1.6–1.7 için `PaymentIdempotency` UNIQUE(tenant_id, idempotency_key) ve `SavedRecipient` tabloları da eklendi)
+- [x] `AddAccount` → ValidationGuid akışı (proxy) — `CardsService.AddAsync`: bu adımda DB'ye kayıt yok, kart no log'lanmaz; ResponseCode!=0 → 422 METROPOL_ERROR + katalog mesajı
+- [x] `AddAccountConfirm` → UserAccountToken sakla — `CardsService.ConfirmAsync`: MemberId istekten DEĞİL users.member_id'den; token şifreli saklanır, maskeli no yanıttan (maskesizse backend maskeler)
+- [x] Kart listeleme (kullanıcının kartları) — `GET /metropol/cards` (`MetropolCardsController`), tenant + kullanıcı + soft-delete filtreli
+- [x] `DeleteUser` (kart bağını kaldır) — önce sahiplik, sonra Metropol (UserRefNo=çözülmüş token, UserRefType=2 VARSAYIM — `MetropolDefaults` + LESSONS.md), başarıda soft-delete
 - [ ] Mobile: kart slider, Kart Ekle 3 adım (no+tel / OTP / bilgiler), silme onayı
 
 ### 1.5 Bakiye & işlem (BACKEND + MOBILE)
-- [ ] `BalanceQuery` proxy (Resto/Gift; sunum: Toplam/Restoran/Market)
-- [ ] Bakiye kısa cache + manuel yenileme
-- [ ] `TransactionHistory` / `CustomerDetailReport` proxy + sayfalama
+- [x] `BalanceQuery` proxy (Resto/Gift; sunum: Toplam/Restoran/Market) — `BalanceService.GetBalanceAsync`: wallets[] + totalBalance (para string "0.00"); WalletId=0 tüm cüzdanlar (VARSAYIM, LESSONS.md)
+- [x] Bakiye kısa cache + manuel yenileme — ~30 sn IDistributedCache (`balance:{cardId}`), `?refresh=true` atlar (PRD §17.7)
+- [x] `TransactionHistory` / `CustomerDetailReport` proxy + sayfalama — `TransactionHistory` kullanıldı (sayfasız döner → bellekte sayfalama); `CustomerDetailReport` müşteri-numarası bazlı olduğundan bu uçta gerekmedi. Tip eşleme TranTypeId=1→sale/diğer→transfer (VARSAYIM), maskedName backend'de maskeli, tarih en iyi çaba ISO parse + `/recent` son 5 işlem
 - [ ] Mobile: bakiye kartları, son 5 işlem, işlem geçmişi ekranı (filtre/sayfalama)
 
 ### 1.6 Harcama akışı (BACKEND + MOBILE — SIRA KRİTİK)
-- [ ] `GetPreSaleInfo` proxy (Code+CodeType+MemberId+UserAccountRef)
-- [ ] `SaleConfirm` proxy + **idempotency** (SaleRefCode/ConsumerRefCode tekrar engeli)
-- [ ] `GetSaleInfo` proxy (durum sorgu)
-- [ ] WalletId belirleme (ProductId 1→1, 3→3)
+- [x] `GetPreSaleInfo` proxy (Code+CodeType+MemberId+UserAccountRef) — `PaymentsService.PresaleAsync` (`POST /metropol/sale/presale-info`, `MetropolSaleController`): kart sahipliği tenant+kullanıcı filtreli, MemberId istekten DEĞİL users.member_id'den, UserAccountRef karttan çözülür; ResponseCode!=0 → 422 METROPOL_ERROR + katalog
+- [x] `SaleConfirm` proxy + **idempotency** (SaleRefCode/ConsumerRefCode tekrar engeli) — `ConfirmSaleAsync`: Idempotency-Key başlığı ZORUNLU (yoksa VALIDATION_ERROR); payment_idempotency akışı (`IdempotencyGuard`, ARCHITECTURE §5.3): success→kayıtlı yanıt AYNEN, failed→kayıtlı hata AYNEN (aynı SaleRefCode tekrar gönderilmez), pending→409, UNIQUE yarışı→409; PaymentTypeId=1 cüzdan VARSAYIMI (`MetropolDefaults.WalletPaymentTypeId`, LESSONS.md); başarıda bakiye cache invalidate (balanceAfter sözleşmeden kaldırıldı — API_CONTRACT §7 notu)
+- [x] `GetSaleInfo` proxy (durum sorgu) — `GET /metropol/sale/info`; CardNo backend'de maskelenir
+- [x] WalletId belirleme (ProductId 1→1, 3→3) — `MetropolDefaults.SuggestedWalletId` (bilinmeyen ProductId güvenli tarafta 1/Resto — VARSAYIM, LESSONS.md); presale yanıtında `suggestedWalletId`
 - [ ] Mobile: QR okuma, kısa kod girişi
 - [ ] Mobile: **kart seçim+onay (preinfo'dan ÖNCE)**
 - [ ] Mobile: tutar/onay ekranı (cüzdan seçimi), ÖDE
 - [ ] Mobile: başarılı fiş ekranı + başarısız/tekrar dene
-- [ ] **Test:** çift harcama engellenir
+- [x] **Test:** çift harcama engellenir — `PaymentsServiceTests` (14 test): aynı anahtar ikinci confirm Metropol'e GİTMEZ + ilk yanıt döner, pending 409, farklı anahtar normal, failed tekrar gönderilmez, WalletId kuralı (3→3/1→1/2→1), başka kullanıcının kartı NOT_FOUND, katalog mesajı, cache invalidation
 
 ### 1.7 Bakiye transferi (BACKEND + MOBILE)
-- [ ] `BalanceTransfer` proxy + idempotency
-- [ ] Entity: SavedRecipient (kayıtlı alıcı)
+- [x] `BalanceTransfer` proxy + idempotency — `TransfersService.TransferAsync` (`POST /metropol/transfer`, `MetropolTransferController`; Idempotency-Key ZORUNLU, operation=balance_transfer, harcamayla aynı `IdempotencyGuard` akışı). Alıcı çözümleme: saved→kendi kaydından şifreli token, phone→AYNI tenant'ta aktif kullanıcının aktif kartı (izolasyon; yoksa NOT_FOUND), qr→opak token (VARSAYIM, LESSONS.md), card→[!] desteklenmiyor (sözleşme boşluğu: tam kart no bizde yok, Metropol'de no→token ucu yok — LESSONS.md). Amount int → tam-TL doğrulaması; başarıda saveRecipient kaydı (token şifreli) + bakiye cache invalidate; `POST /metropol/transfer/resolve-qr` + saved-recipients GET/POST/DELETE de hazır
+- [x] Entity: SavedRecipient (kayıtlı alıcı) — 1.4'teki `CardsAndPayments` migration'ında oluşturulmuştu; Faz 1.7'de transfer + CRUD uçlarına bağlandı (token at-rest şifreli, kart no yalnız maskeli)
 - [ ] Mobile: transfer ana menü
 - [ ] Mobile: Kartlar Arası (gönderen/alıcı/cüzdan/tutar/açıklama)
 - [ ] Mobile: QR Kod Alıcı (okut→token)
 - [ ] Mobile: işlem onay (maskeli alıcı, tanımlı alıcı ekle)
 - [ ] Mobile: başarılı/başarısız sonuç
-- [ ] **Test:** transfer idempotent
+- [x] **Test:** transfer idempotent — `TransfersServiceTests` (14 test): aynı anahtar Metropol'e ikinci kez GİTMEZ + ilk fiş döner, pending 409, tam-TL olmayan tutar VALIDATION_ERROR, telefon alıcı yalnız aynı tenant'ta (izolasyon), saveRecipient şifreli token kaydı, saved/card/qr türleri, katalog mesajı, saved-recipients CRUD sahiplik
 
 ### 1.8 Ana Sayfa içerik (BACKEND + WEB + MOBILE)
 - [x] Entity: Announcement, Survey, SurveyQuestion, SurveyResponse, Video, VideoWatch — Announcement.TenantId nullable (null=global), migration `ContentEntities`, UNIQUE(survey_id,user_id) + UNIQUE(video_id,user_id)
@@ -124,7 +124,7 @@
 - [ ] Web: segment→modül yetki ekranı
 - [ ] Admin: login, firma (tenant) oluştur/onayla, firma admin ata, tenant marka ayarı
 - [ ] Admin: modül tanımları
-- [!] Panel girişi (e-posta+şifre, PANELS_SPEC §0.4) sözleşme boşluğu — karar bekliyor (LESSONS.md)
+- [x] Panel girişi (e-posta+şifre, PANELS_SPEC §0.4) — karar: kendi auth (LESSONS.md). `users.password_hash` (yalnız panel kullanıcıları, migration `PanelAuth`), `POST /auth/login` (panel rolleri; enduser 403; 5 hatalı denemede 15 dk `LOGIN_LOCKED`; e-posta başına 10/dk rate-limit) + `POST /auth/set-password` (davet token'ı 72 saat/tek kullanımlık; politika: min 8, harf+rakam); PBKDF2-SHA256 100k (`Pbkdf2PasswordHasher`, paketsiz); platform admin daveti yanıtına `inviteToken` eklendi (e-posta gönderimi TODO, token log'lanmaz) — 11 test (`PanelAuthServiceTests`)
 - [x] **Test:** firma admin sadece kendi tenant; platform admin PII'ye erişemez — backend servis testleriyle karşılandı (`AdminServicesTests` 10 + `MeServiceTests` 6, SQLite in-memory); panel UI testleri panel geliştirilince ayrıca
 
 ### 1.10 White-label tema

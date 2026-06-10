@@ -383,6 +383,11 @@ public sealed class AuthServiceTests : IDisposable
             _windows[key] = now.Add(window);
             return Task.FromResult(true);
         }
+
+        // Sayaçlı sürüm panel login içindir; OTP senaryoları kullanmaz (PanelAuthServiceTests'te ayrı fake).
+        public Task<bool> TryAcquireAsync(
+            string key, TimeSpan window, int maxCount, CancellationToken cancellationToken = default) =>
+            throw new NotSupportedException("Bu testlerde sayaçlı rate-limit kullanılmaz.");
     }
 
     private sealed class RecordingSmsSender : ISmsSender

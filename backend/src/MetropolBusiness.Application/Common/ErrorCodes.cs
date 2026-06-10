@@ -10,6 +10,7 @@ public static class ErrorCodes
     public const string NotFound = "NOT_FOUND";
     public const string OtpInvalid = "OTP_INVALID";
     public const string OtpLocked = "OTP_LOCKED";
+    public const string LoginLocked = "LOGIN_LOCKED";
     public const string OtpRateLimit = "OTP_RATE_LIMIT";
     public const string RefreshInvalid = "REFRESH_INVALID";
     public const string SurveyAlreadyAnswered = "SURVEY_ALREADY_ANSWERED";

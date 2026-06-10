@@ -25,6 +25,9 @@ public class UserConfiguration : IEntityTypeConfiguration<User>
         // Şifreli TCKN — düz metin kolon yok (CLAUDE.md kural 4).
         builder.Property(u => u.TcknEncrypted).HasColumnName("tckn_encrypted").HasMaxLength(500);
 
+        // Panel girişi şifre hash'i (PBKDF2 biçimli string) — yalnız panel kullanıcılarında dolu.
+        builder.Property(u => u.PasswordHash).HasColumnName("password_hash").HasMaxLength(500);
+
         // Bildirim/izin tercihleri (API_CONTRACT §2 /me/preferences) — Tenant.SettingsJson deseni.
         builder.Property(u => u.PreferencesJson)
             .HasColumnName("preferences")

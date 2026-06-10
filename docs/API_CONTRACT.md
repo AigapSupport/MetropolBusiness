@@ -86,6 +86,31 @@ Yanıt 200: yeni `accessToken` + dönen `refreshToken` (rotasyon). Hata 401 `REF
 ### POST /auth/logout
 İstek: `{ "refreshToken": "jwt" }` → 204. Refresh geçersiz kılınır.
 
+### POST /auth/login
+**Panel girişi** (web/admin — PANELS_SPEC §0.4 kararı: kendi auth, e-posta+şifre). Yalnızca panel rolleri (`company_admin`, `approver`, `platform_admin`); `enduser` panele giremez. `companyCode`, e-posta birden fazla firmada kayıtlıysa zorunludur.
+İstek:
+```json
+{ "email": "admin@firma.com", "password": "string", "companyCode": "AIGAP" }
+```
+Yanıt 200:
+```json
+{
+  "accessToken": "jwt",
+  "refreshToken": "jwt",
+  "expiresIn": 900,
+  "user": { "id": "uuid", "firstName": "Banu", "lastName": "Yönetici", "role": "company_admin" }
+}
+```
+Hata: 400 `VALIDATION_ERROR` (alan eksik / companyCode gerekli), 401 `UNAUTHENTICATED` (e-posta veya şifre hatalı — hangisi olduğu söylenmez), 403 `NOT_AUTHORIZED` (panel rolü değil), 423 `LOGIN_LOCKED` (5 hatalı deneme → 15 dk kilit), 429 `RATE_LIMITED` (e-posta başına 10/dk).
+
+### POST /auth/set-password
+Davet token'ı ile şifre belirleme (token, `POST /platform/tenants/{id}/admins` yanıtındaki `inviteToken`; **72 saat geçerli, tek kullanımlık**). Şifre politikası: en az 8 karakter, en az bir harf + bir rakam.
+İstek:
+```json
+{ "inviteToken": "string", "newPassword": "string" }
+```
+Yanıt: 204. Hata: 400 `VALIDATION_ERROR` (şifre politikası), 404 `NOT_FOUND` (token geçersiz/süresi dolmuş/kullanılmış).
+
 ### GET /tenants/{code}/branding
 **Anonim** (login öncesi white-label tema yüklemesi; TODO 1.10). Yalnızca **aktif** tenant döner; PII yok.
 ```json
@@ -272,10 +297,12 @@ Yanıt 200 (başarı fişi):
 {
   "success":true, "merchantNo":"0000052485", "terminalNo":"0000063710",
   "approvalNo":"20040736", "maskedCardNo":"637******976",
-  "amount":"200.00", "balanceAfter":"30624.00",
-  "merchantName":"Elif Telefon Testi", "date":"2026-06-10T13:18:00Z"
+  "amount":"200.00",
+  "merchantName":null, "date":"2026-06-10T13:18:00Z"
 }
 ```
+> **Not (sözleşme değişikliği, 2026-06-10):** `balanceAfter` alanı KALDIRILDI — Metropol SaleConfirm yanıtında bakiye dönmez; confirm sonrası fazladan BalanceQuery çağrısı yapılmaz. Backend, başarılı confirm'de kartın bakiye cache'ini geçersiz kılar; **bakiye ayrı uçla alınır** (`GET /metropol/cards/{cardId}/balance`, §6). `merchantName` de Metropol confirm yanıtında dönmediği için `null` olabilir; istemci mağaza adını presale ekranından taşır.
+
 Hata 422 `METROPOL_ERROR` (7085 Alışveriş başarısız vb.), 409 `DUPLICATE_OPERATION` (aynı idempotency-key).
 
 ### GET /metropol/sale/info
@@ -425,7 +452,7 @@ Onay bekleyenler (yetki: approver/segment).
 - `GET /platform/tenants` `?q&status&page`
 - `POST /platform/tenants` (oluştur) `{ "name","code","metropolConsumerId","branding":{...} }`
 - `PUT /platform/tenants/{id}` · durum değişimi
-- `POST /platform/tenants/{id}/admins` (firma admin daveti)
+- `POST /platform/tenants/{id}/admins` (firma admin daveti) — yanıt `inviteToken` içerir (şifre belirleme: `POST /auth/set-password`, 72 saat, tek kullanımlık; yalnız bu yanıtta döner, log'lanmaz)
 
 ### Modül tanımları
 - `GET/POST/PUT /platform/modules` `{ "code","name","isActive" }`
@@ -451,6 +478,7 @@ Onay bekleyenler (yetki: approver/segment).
 | `NOT_FOUND` | 404 | kayıt yok |
 | `OTP_INVALID` | 400 | OTP yanlış |
 | `OTP_LOCKED` | 423 | OTP deneme kilidi |
+| `LOGIN_LOCKED` | 423 | panel girişi deneme kilidi (5 hatalı şifre → 15 dk) |
 | `OTP_RATE_LIMIT` | 429 | çok fazla OTP isteği |
 | `REFRESH_INVALID` | 401 | refresh token geçersiz/süresi dolmuş/zaten kullanılmış (rotasyon) |
 | `SURVEY_ALREADY_ANSWERED` | 409 | tek seferlik anket |

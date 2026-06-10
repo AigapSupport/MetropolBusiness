@@ -29,6 +29,9 @@ public class AppDbContext(DbContextOptions<AppDbContext> options, ITenantContext
     public DbSet<SurveyResponse> SurveyResponses => Set<SurveyResponse>();
     public DbSet<Video> Videos => Set<Video>();
     public DbSet<VideoWatch> VideoWatches => Set<VideoWatch>();
+    public DbSet<Card> Cards => Set<Card>();
+    public DbSet<PaymentIdempotency> PaymentIdempotencies => Set<PaymentIdempotency>();
+    public DbSet<SavedRecipient> SavedRecipients => Set<SavedRecipient>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -67,6 +70,15 @@ public class AppDbContext(DbContextOptions<AppDbContext> options, ITenantContext
             .HasQueryFilter(v => v.TenantId == _tenantContext.TenantId);
         modelBuilder.Entity<VideoWatch>()
             .HasQueryFilter(w => w.Video!.TenantId == _tenantContext.TenantId);
+
+        // Kart & ödeme tabloları (TODO 1.4/1.5): tenant filtreli; kart ayrıca soft-delete'li —
+        // silinen kart bağı hiçbir sorguda görünmez (PRD §8.8 "yalnızca kart bağı kaldırılır").
+        modelBuilder.Entity<Card>()
+            .HasQueryFilter(c => c.DeletedAt == null && c.TenantId == _tenantContext.TenantId);
+        modelBuilder.Entity<PaymentIdempotency>()
+            .HasQueryFilter(p => p.TenantId == _tenantContext.TenantId);
+        modelBuilder.Entity<SavedRecipient>()
+            .HasQueryFilter(r => r.TenantId == _tenantContext.TenantId);
     }
 
     public override Task<int> SaveChangesAsync(CancellationToken cancellationToken = default)

@@ -3,6 +3,7 @@ using System;
 using MetropolBusiness.Infrastructure.Persistence;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 
@@ -11,9 +12,11 @@ using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 namespace MetropolBusiness.Infrastructure.Persistence.Migrations
 {
     [DbContext(typeof(AppDbContext))]
-    partial class AppDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260610150301_PanelAuth")]
+    partial class PanelAuth
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -99,68 +102,6 @@ namespace MetropolBusiness.Infrastructure.Persistence.Migrations
                     b.ToTable("announcement_segments", (string)null);
                 });
 
-            modelBuilder.Entity("MetropolBusiness.Domain.Entities.Card", b =>
-                {
-                    b.Property<Guid>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("uuid")
-                        .HasColumnName("id");
-
-                    b.Property<DateTimeOffset>("CreatedAt")
-                        .HasColumnType("timestamp with time zone")
-                        .HasColumnName("created_at");
-
-                    b.Property<DateTimeOffset?>("DeletedAt")
-                        .HasColumnType("timestamp with time zone")
-                        .HasColumnName("deleted_at");
-
-                    b.Property<string>("HolderName")
-                        .HasMaxLength(200)
-                        .HasColumnType("character varying(200)")
-                        .HasColumnName("holder_name");
-
-                    b.Property<string>("MaskedCardNo")
-                        .IsRequired()
-                        .HasMaxLength(50)
-                        .HasColumnType("character varying(50)")
-                        .HasColumnName("masked_card_no");
-
-                    b.Property<string>("Status")
-                        .IsRequired()
-                        .HasMaxLength(10)
-                        .HasColumnType("character varying(10)")
-                        .HasColumnName("status");
-
-                    b.Property<Guid>("TenantId")
-                        .HasColumnType("uuid")
-                        .HasColumnName("tenant_id");
-
-                    b.Property<DateTimeOffset>("UpdatedAt")
-                        .HasColumnType("timestamp with time zone")
-                        .HasColumnName("updated_at");
-
-                    b.Property<string>("UserAccountTokenEncrypted")
-                        .IsRequired()
-                        .HasMaxLength(1000)
-                        .HasColumnType("character varying(1000)")
-                        .HasColumnName("user_account_token_encrypted");
-
-                    b.Property<Guid>("UserId")
-                        .HasColumnType("uuid")
-                        .HasColumnName("user_id");
-
-                    b.HasKey("Id")
-                        .HasName("pk_cards");
-
-                    b.HasIndex("TenantId")
-                        .HasDatabaseName("ix_cards_tenant_id");
-
-                    b.HasIndex("UserId")
-                        .HasDatabaseName("ix_cards_user_id");
-
-                    b.ToTable("cards", (string)null);
-                });
-
             modelBuilder.Entity("MetropolBusiness.Domain.Entities.Module", b =>
                 {
                     b.Property<Guid>("Id")
@@ -200,122 +141,6 @@ namespace MetropolBusiness.Infrastructure.Persistence.Migrations
                         .HasDatabaseName("ix_modules_code");
 
                     b.ToTable("modules", (string)null);
-                });
-
-            modelBuilder.Entity("MetropolBusiness.Domain.Entities.PaymentIdempotency", b =>
-                {
-                    b.Property<Guid>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("uuid")
-                        .HasColumnName("id");
-
-                    b.Property<DateTimeOffset>("CreatedAt")
-                        .HasColumnType("timestamp with time zone")
-                        .HasColumnName("created_at");
-
-                    b.Property<string>("IdempotencyKey")
-                        .IsRequired()
-                        .HasMaxLength(200)
-                        .HasColumnType("character varying(200)")
-                        .HasColumnName("idempotency_key");
-
-                    b.Property<string>("Operation")
-                        .IsRequired()
-                        .HasMaxLength(50)
-                        .HasColumnType("character varying(50)")
-                        .HasColumnName("operation");
-
-                    b.Property<string>("RefCode")
-                        .HasMaxLength(100)
-                        .HasColumnType("character varying(100)")
-                        .HasColumnName("ref_code");
-
-                    b.Property<string>("ResponseSnapshotJson")
-                        .HasColumnType("jsonb")
-                        .HasColumnName("response_snapshot");
-
-                    b.Property<string>("Status")
-                        .IsRequired()
-                        .HasMaxLength(10)
-                        .HasColumnType("character varying(10)")
-                        .HasColumnName("status");
-
-                    b.Property<Guid>("TenantId")
-                        .HasColumnType("uuid")
-                        .HasColumnName("tenant_id");
-
-                    b.Property<DateTimeOffset>("UpdatedAt")
-                        .HasColumnType("timestamp with time zone")
-                        .HasColumnName("updated_at");
-
-                    b.Property<Guid>("UserId")
-                        .HasColumnType("uuid")
-                        .HasColumnName("user_id");
-
-                    b.HasKey("Id")
-                        .HasName("pk_payment_idempotency");
-
-                    b.HasIndex("UserId")
-                        .HasDatabaseName("ix_payment_idempotency_user_id");
-
-                    b.HasIndex("TenantId", "IdempotencyKey")
-                        .IsUnique()
-                        .HasDatabaseName("ix_payment_idempotency_tenant_id_idempotency_key");
-
-                    b.ToTable("payment_idempotency", (string)null);
-                });
-
-            modelBuilder.Entity("MetropolBusiness.Domain.Entities.SavedRecipient", b =>
-                {
-                    b.Property<Guid>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("uuid")
-                        .HasColumnName("id");
-
-                    b.Property<DateTimeOffset>("CreatedAt")
-                        .HasColumnType("timestamp with time zone")
-                        .HasColumnName("created_at");
-
-                    b.Property<string>("Label")
-                        .IsRequired()
-                        .HasMaxLength(100)
-                        .HasColumnType("character varying(100)")
-                        .HasColumnName("label");
-
-                    b.Property<string>("MaskedCardNo")
-                        .IsRequired()
-                        .HasMaxLength(50)
-                        .HasColumnType("character varying(50)")
-                        .HasColumnName("masked_card_no");
-
-                    b.Property<string>("RecipientTokenEncrypted")
-                        .IsRequired()
-                        .HasMaxLength(1000)
-                        .HasColumnType("character varying(1000)")
-                        .HasColumnName("recipient_token_encrypted");
-
-                    b.Property<Guid>("TenantId")
-                        .HasColumnType("uuid")
-                        .HasColumnName("tenant_id");
-
-                    b.Property<DateTimeOffset>("UpdatedAt")
-                        .HasColumnType("timestamp with time zone")
-                        .HasColumnName("updated_at");
-
-                    b.Property<Guid>("UserId")
-                        .HasColumnType("uuid")
-                        .HasColumnName("user_id");
-
-                    b.HasKey("Id")
-                        .HasName("pk_saved_recipients");
-
-                    b.HasIndex("TenantId")
-                        .HasDatabaseName("ix_saved_recipients_tenant_id");
-
-                    b.HasIndex("UserId")
-                        .HasDatabaseName("ix_saved_recipients_user_id");
-
-                    b.ToTable("saved_recipients", (string)null);
                 });
 
             modelBuilder.Entity("MetropolBusiness.Domain.Entities.Segment", b =>
@@ -834,69 +659,6 @@ namespace MetropolBusiness.Infrastructure.Persistence.Migrations
                     b.Navigation("Announcement");
 
                     b.Navigation("Segment");
-                });
-
-            modelBuilder.Entity("MetropolBusiness.Domain.Entities.Card", b =>
-                {
-                    b.HasOne("MetropolBusiness.Domain.Entities.Tenant", "Tenant")
-                        .WithMany()
-                        .HasForeignKey("TenantId")
-                        .OnDelete(DeleteBehavior.Restrict)
-                        .IsRequired()
-                        .HasConstraintName("fk_cards_tenants_tenant_id");
-
-                    b.HasOne("MetropolBusiness.Domain.Entities.User", "User")
-                        .WithMany()
-                        .HasForeignKey("UserId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired()
-                        .HasConstraintName("fk_cards_users_user_id");
-
-                    b.Navigation("Tenant");
-
-                    b.Navigation("User");
-                });
-
-            modelBuilder.Entity("MetropolBusiness.Domain.Entities.PaymentIdempotency", b =>
-                {
-                    b.HasOne("MetropolBusiness.Domain.Entities.Tenant", "Tenant")
-                        .WithMany()
-                        .HasForeignKey("TenantId")
-                        .OnDelete(DeleteBehavior.Restrict)
-                        .IsRequired()
-                        .HasConstraintName("fk_payment_idempotency_tenants_tenant_id");
-
-                    b.HasOne("MetropolBusiness.Domain.Entities.User", "User")
-                        .WithMany()
-                        .HasForeignKey("UserId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired()
-                        .HasConstraintName("fk_payment_idempotency_users_user_id");
-
-                    b.Navigation("Tenant");
-
-                    b.Navigation("User");
-                });
-
-            modelBuilder.Entity("MetropolBusiness.Domain.Entities.SavedRecipient", b =>
-                {
-                    b.HasOne("MetropolBusiness.Domain.Entities.Tenant", "Tenant")
-                        .WithMany()
-                        .HasForeignKey("TenantId")
-                        .OnDelete(DeleteBehavior.Restrict)
-                        .IsRequired()
-                        .HasConstraintName("fk_saved_recipients_tenants_tenant_id");
-
-                    b.HasOne("MetropolBusiness.Domain.Entities.User", "User")
-                        .WithMany()
-                        .HasForeignKey("UserId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired()
-                        .HasConstraintName("fk_saved_recipients_users_user_id");
-
-                    b.Navigation("Tenant");
-
-                    b.Navigation("User");
                 });
 
             modelBuilder.Entity("MetropolBusiness.Domain.Entities.Segment", b =>

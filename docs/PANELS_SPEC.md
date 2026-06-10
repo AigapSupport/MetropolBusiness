@@ -31,6 +31,7 @@
 - Para `numeric` string, yerel format gösterim (1.250,00 ₺).
 
 ### 0.4 Auth (her iki panel)
+- Karar: kendi auth — e-posta+şifre, OTP yok (LESSONS.md 'Panel girişi' kararı; API_CONTRACT §1 `/auth/login` + `/auth/set-password`).
 - E-posta + şifre ile giriş (mobilden farklı — panel kullanıcıları kurumsal hesap). 2FA opsiyonel (Faz sonrası).
 - Şifremi unuttum akışı.
 - Oturum: JWT access+refresh; rol kontrolü (`company_admin` / `platform_admin`).
