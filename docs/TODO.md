@@ -61,12 +61,12 @@
 - [x] Mobile: token saklama (secure storage), sessiz yenileme, login'e düşme — `tokenStorage.ts` (Keychain/Keystore + bu ortamda in-memory fallback), 401'de tek uçuş refresh + istek tekrarı, refresh geçersizse logout → RootNavigator login'e düşer
 
 ### 1.3 Metropol entegrasyon katmanı (BACKEND — KRİTİK)
-- [!] `MetropolModels.cs` taşı + namespace düzenle — kaynak dosya bekleniyor (repodaki 0-byte placeholder; bkz. `LESSONS.md`)
+- [x] `MetropolModels.cs` taşı + namespace düzenle — kaynak dosya 2026-06-10'da sağlandı; `Models/MetropolModels.cs`'e taşındı (alan adları/tipleri birebir; yalnız namespace + Newtonsoft bağımlılığı temizliği)
 - [x] AES helper (CBC/PKCS7/IV=16 sıfır/128-bit) + Base64 — **unit test** (`AesEncryptionHelper` + roundtrip/determinizm/anahtar testleri)
-- [x] `GenerateToken` + `getdate` ile saat farkı çözümü — akış `MetropolTokenService`'te; `IMetropolAuthClient` HTTP implementasyonu sözleşme dosyası gelince
-- [x] Token cache (Redis) + single-flight yenileme (4 dk eşik) — IDistributedCache + process-içi kilit (dağıtık kilit ileride), 4 test
-- [x] İki base URL (auth/api) konfigürasyonu — `MetropolOptions.AuthBaseUrl/ApiBaseUrl` (Faz 0'dan beri)
-- [!] `MetropolApiClient` (tüm endpoint'ler için tipli metotlar) — kaynak dosya bekleniyor (`ApiEndpoints` sabitleri gerçek `MetropolModels.cs` içinde)
+- [x] `GenerateToken` + `getdate` ile saat farkı çözümü — `MetropolTokenService` gerçek sözleşmeye bağlandı (ConsumerId/ConsumerName/RefNo; TTL = expiration − getdate); `MetropolAuthClient` HTTP implementasyonu yazıldı
+- [x] Token cache (Redis) + single-flight yenileme (4 dk eşik) — IDistributedCache + process-içi kilit (dağıtık kilit ileride), 6 test
+- [x] İki base URL (auth/api) konfigürasyonu — `MetropolOptions.AuthBaseUrl/ApiBaseUrl`, DI'da iki ayrı HttpClient
+- [x] `MetropolApiClient` (tüm endpoint'ler için tipli metotlar) — 16 uç (`IMetropolApiClient`), Bearer token'lı, retry'sız (para uçlarında idempotency uygulama katmanında)
 - [x] Hata kodu → Türkçe mesaj eşleme tablosu — `MetropolErrorCatalog` KISMİ (7601/7085 + genel mesaj); tam tablo doküman gelince
 - [x] Maskeleme yardımcıları (kart no, isim, TCKN) — `Application/Common/Masking` (+telefon), unit testli
 - [x] **Sır yönetimi:** AccessKey/AESKey/ConsumerId env/secret'tan — `MetropolOptions` configuration'dan bağlanır, repoda gerçek değer yok

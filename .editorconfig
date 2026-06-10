@@ -26,8 +26,8 @@ dotnet_sort_system_directives_first = true
 # Namespace = klasör yapısı, file-scoped namespace
 csharp_style_namespace_declarations = file_scoped:warning
 
-# Erişilebilirlik her zaman açık
-dotnet_style_require_accessibility_modifiers = always:warning
+# Erişilebilirlik açık (interface üyeleri hariç — C# konvansiyonu)
+dotnet_style_require_accessibility_modifiers = for_non_interface_members:warning
 
 # this. kullanma
 dotnet_style_qualification_for_field = false:suggestion
@@ -56,6 +56,15 @@ dotnet_naming_symbols.private_fields.applicable_kinds = field
 dotnet_naming_symbols.private_fields.applicable_accessibilities = private
 dotnet_naming_style.underscore_camel.required_prefix = _
 dotnet_naming_style.underscore_camel.capitalization = camel_case
+
+# Dış sözleşme ve üretilmiş kod — stil analizi kapalı
+# (MetropolModels.cs: Metropol API kontratı, CLAUDE.md kural 6 gereği değiştirilmez;
+#  Migrations: EF Core üretir.)
+[backend/src/MetropolBusiness.Integration.Metropol/Models/MetropolModels.cs]
+generated_code = true
+
+[backend/src/MetropolBusiness.Infrastructure/Persistence/Migrations/*.cs]
+generated_code = true
 
 [*.{json,jsonc,yml,yaml}]
 indent_size = 2

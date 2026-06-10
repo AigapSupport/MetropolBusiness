@@ -19,6 +19,9 @@ public sealed class MetropolOptions
     public string AesKey { get; init; } = string.Empty;
     public string ConsumerId { get; init; } = string.Empty;
 
+    /// <summary>GenerateTokenRequest.ConsumerName — Metropol'ün verdiği tüketici adı.</summary>
+    public string ConsumerName { get; init; } = string.Empty;
+
     /// <summary>Token 5 dk geçerli; bu saniye eşiğinde yenilenir (ARCHITECTURE §5.1: ~4 dk).</summary>
     public int TokenRefreshThresholdSeconds { get; init; } = 240;
 }

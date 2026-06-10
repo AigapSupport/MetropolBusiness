@@ -53,6 +53,12 @@ wsl --update
 
 **Gereken:** Gerçek `MetropolModels.cs` dosyasının sağlanması (proje sahibi/Metropol tarafı). Dosya gelince: placeholder'a taşı + namespace düzenle, `AccessTokenModels.cs` ile birleştir, varsayımları (anahtar kodlaması, alan adları) teyit et, `MetropolApiClient` + `IMetropolAuthClient` HTTP implementasyonunu yaz, hata kodu tablosunu genişlet.
 
+**✅ ÇÖZÜLDÜ (2026-06-10):** Proje sahibi dosyayı sağladı; `Models/MetropolModels.cs`'e taşındı (yalnız namespace + Newtonsoft temizliği; alan adları/tipleri birebir). `MetropolAuthClient` + `MetropolApiClient` (16 uç) yazıldı; token servisi gerçek sözleşmeye bağlandı (GenerateTokenRequest: ConsumerId/ConsumerName/RefNo; TTL = `expiration − getdate` → yerel saatten bağımsız). **Kalan varsayımlar (Metropol testinde teyit edilecek):**
+1. AES anahtarı UTF-8 ile 16 bayt kabul edildi (orijinal şifreleme kodu paylaşılmadı, yalnız modeller geldi).
+2. `getdate` yanıt şeması sözleşmede yok — ham gövde tarih olarak ayrıştırılıyor (düz/JSON-string toleranslı).
+3. `BalanceTransferRequest.Amount` **int** — TL tam sayı mı kuruş mu belirsiz; uygulama katmanı tam-TL doğrulamasıyla gönderecek, Metropol testinde netleşecek.
+4. `PaymentInfo.PaymentTypeId` ve `BankRefCode` semantiği belgelenmemiş — SaleConfirm akışı (Faz 1.6) test ortamında doğrulanacak.
+
 ---
 
 ## 2026-06-10 — RN native projeleri (android/ios) bu ortamda üretilemedi (Faz 0.4)
@@ -86,3 +92,5 @@ wsl --update
 2. **users'a password_hash kolonu + e-posta+şifre login ucu:** PANELS_SPEC'e birebir uyar; karşılığında şifre politikası, hashing, "şifremi unuttum" (e-posta gönderimi) ve ayrı rate-limit gerektirir.
 
 **Karar sahibi:** proje sahibi. Karar netleşince `API_CONTRACT.md §1` ve `docs/TODO.md` 1.9 altındaki `[!]` maddesi güncellenecek.
+
+**✅ KARAR VERİLDİ (2026-06-10, proje sahibi):** Seçenek 2 — panel girişi Metropol API'lerine gitmez; **kendi API'mizle e-posta+şifre** girişi yapılır, kimlik bilgileri bizde tutulur. Uygulama: `users.password_hash` (yalnızca panel kullanıcılarında dolu), `POST /auth/login` (panel rolleri), PBKDF2 hash, deneme kilidi + rate-limit, davetle şifre belirleme. `API_CONTRACT.md §1` güncellenecek.

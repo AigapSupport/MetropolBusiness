@@ -1,26 +1,21 @@
-using MetropolBusiness.Integration.Metropol.Models;
+using static MetropolBusiness.Integration.Metropol.Models.MetropolModels;
 
 namespace MetropolBusiness.Integration.Metropol.Services;
 
 /// <summary>
 /// Metropol auth (token) servisine giden çağrıların soyutlaması (AuthBaseUrl tarafı).
-/// HTTP implementasyonu, endpoint sabitleri gerçek MetropolModels.cs (ApiEndpoints)
-/// içinde olduğu ve bu dosya henüz sağlanmadığı için YAZILMADI (bkz. LESSONS.md);
-/// sözleşme dosyası gelince HttpClient tabanlı implementasyon eklenecek.
+/// Sözleşme: MetropolModels.cs (ApiEndpoints.GenerateToken / GetDate).
 /// </summary>
 public interface IMetropolAuthClient
 {
     /// <summary>
     /// getdate servisinden Metropol sunucu zamanını döner.
     /// İstemci/sunucu saat farkı token'ı erken geçersiz kılabildiğinden
-    /// CreateDate olarak bu değer kullanılır (CLAUDE.md §6 saat farkı tuzağı).
+    /// AccessData.CreateDate olarak bu değer kullanılır (CLAUDE.md §6 saat farkı tuzağı).
     /// </summary>
-    Task<string> GetServerDateAsync(CancellationToken cancellationToken = default);
+    Task<DateTime> GetServerDateAsync(CancellationToken cancellationToken = default);
 
-    /// <summary>
-    /// GenerateToken çağrısı: AES ile şifrelenmiş Base64 SecureAccessData gönderir,
-    /// Bearer token + geçerlilik süresini döner.
-    /// </summary>
-    Task<MetropolTokenResult> GenerateTokenAsync(
-        string secureAccessData, CancellationToken cancellationToken = default);
+    /// <summary>GenerateToken çağrısı — Bearer token + mutlak geçerlilik zamanı döner.</summary>
+    Task<GenerateTokenResponse> GenerateTokenAsync(
+        GenerateTokenRequest request, CancellationToken cancellationToken = default);
 }

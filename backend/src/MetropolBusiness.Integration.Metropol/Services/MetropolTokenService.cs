@@ -1,8 +1,8 @@
 using System.Text.Json;
 using MetropolBusiness.Integration.Metropol.Crypto;
-using MetropolBusiness.Integration.Metropol.Models;
 using Microsoft.Extensions.Caching.Distributed;
 using Microsoft.Extensions.Options;
+using static MetropolBusiness.Integration.Metropol.Models.MetropolModels;
 
 namespace MetropolBusiness.Integration.Metropol.Services;
 
@@ -52,9 +52,7 @@ public sealed class MetropolTokenService(
                 return cachedToken;
             }
 
-            var result = await GenerateAsync(cancellationToken);
-            await CacheTokenAsync(result, cancellationToken);
-            return result.Token;
+            return await GenerateAndCacheAsync(cancellationToken);
         }
         finally
         {
@@ -62,34 +60,49 @@ public sealed class MetropolTokenService(
         }
     }
 
-    private async Task<MetropolTokenResult> GenerateAsync(CancellationToken cancellationToken)
+    private async Task<string> GenerateAndCacheAsync(CancellationToken cancellationToken)
     {
         // Saat farkı tuzağı: CreateDate yerel saatten değil getdate'ten alınır (CLAUDE.md §6).
         var serverDate = await authClient.GetServerDateAsync(cancellationToken);
 
-        // VARSAYIM: JSON alan adları PascalCase; gerçek MetropolModels.cs gelince teyit edilecek.
-        var accessDataJson = JsonSerializer.Serialize(new AccessData(_options.AccessKey, serverDate));
+        var accessDataJson = JsonSerializer.Serialize(new AccessData
+        {
+            AccessKey = _options.AccessKey,
+            CreateDate = serverDate,
+        });
         var secureAccessData = AesEncryptionHelper.Encrypt(accessDataJson, _options.AesKey);
 
-        return await authClient.GenerateTokenAsync(secureAccessData, cancellationToken);
-    }
-
-    private Task CacheTokenAsync(MetropolTokenResult result, CancellationToken cancellationToken)
-    {
-        // TTL = yenileme eşiği; upstream daha kısa ömür bildirirse o esas alınır (bayat token verilmez).
-        var ttlSeconds = Math.Min(_options.TokenRefreshThresholdSeconds, result.ExpirationSeconds);
-        if (ttlSeconds <= 0)
+        var response = await authClient.GenerateTokenAsync(new GenerateTokenRequest
         {
-            return Task.CompletedTask;
+            ConsumerId = _options.ConsumerId,
+            ConsumerName = _options.ConsumerName,
+            SecureAccessData = secureAccessData,
+            RefNo = Guid.NewGuid().ToString("N"),
+        }, cancellationToken);
+
+        // Token üretememek beklenen iş hatası değil sistem hatasıdır; sır içermeyen mesajla fırlatılır.
+        if (!response.success || response.data is null || string.IsNullOrEmpty(response.data.token))
+        {
+            throw new InvalidOperationException(
+                $"Metropol GenerateToken başarısız (responseCode: {response.responseCode}).");
         }
 
-        return cache.SetStringAsync(
-            CacheKey,
-            result.Token,
-            new DistributedCacheEntryOptions
-            {
-                AbsoluteExpiration = timeProvider.GetUtcNow().AddSeconds(ttlSeconds),
-            },
-            cancellationToken);
+        // TTL iki sunucu zamanının farkından hesaplanır (expiration - getdate) — yerel saat
+        // karışmaz; yenileme eşiği üst sınırdır (token 5 dk ise ~4 dk'da yenilenir).
+        var upstreamTtl = (int)(response.data.expiration - serverDate).TotalSeconds;
+        var ttlSeconds = Math.Min(_options.TokenRefreshThresholdSeconds, upstreamTtl);
+        if (ttlSeconds > 0)
+        {
+            await cache.SetStringAsync(
+                CacheKey,
+                response.data.token,
+                new DistributedCacheEntryOptions
+                {
+                    AbsoluteExpiration = timeProvider.GetUtcNow().AddSeconds(ttlSeconds),
+                },
+                cancellationToken);
+        }
+
+        return response.data.token;
     }
 }

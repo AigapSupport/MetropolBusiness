@@ -1,5 +1,4 @@
 using MetropolBusiness.Integration.Metropol.Services;
-using Microsoft.Extensions.Caching.Distributed;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.Extensions.Options;
@@ -9,9 +8,8 @@ namespace MetropolBusiness.Integration.Metropol;
 public static class DependencyInjection
 {
     /// <summary>
-    /// Metropol entegrasyon kayıtları. IMetropolAuthClient'ın HTTP implementasyonu ve
-    /// MetropolApiClient, gerçek sözleşme dosyası (MetropolModels.cs / ApiEndpoints)
-    /// sağlanınca eklenecek (bkz. LESSONS.md); o yüzden burada yalnızca MetropolTokenService kayıtlıdır.
+    /// Metropol entegrasyon kayıtları: iki ayrı HttpClient (auth + api base URL'leri,
+    /// CLAUDE.md §6), token servisi ve tipli API client.
     /// </summary>
     public static IServiceCollection AddMetropolIntegration(this IServiceCollection services)
     {
@@ -20,14 +18,25 @@ public static class DependencyInjection
         // Token TTL hesabı için; host ayrıca kaydetmediyse sistem saati kullanılır.
         services.TryAddSingleton(TimeProvider.System);
 
-        // Factory ile kayıt bilinçlidir: IMetropolAuthClient implementasyonu henüz yokken
-        // constructor tabanlı kayıt, Development'taki ValidateOnBuild'i kırardı.
-        // Servis ancak client kaydı eklendikten sonra çözülebilir; kapsam: scoped.
-        services.AddScoped(provider => new MetropolTokenService(
-            provider.GetRequiredService<IMetropolAuthClient>(),
-            provider.GetRequiredService<IDistributedCache>(),
-            provider.GetRequiredService<IOptions<MetropolOptions>>(),
-            provider.GetRequiredService<TimeProvider>()));
+        // Auth tarafı (GenerateToken/getdate) — ayrı base URL (testauth.metropolodeme.com).
+        services.AddHttpClient<IMetropolAuthClient, MetropolAuthClient>((provider, client) =>
+        {
+            var options = provider.GetRequiredService<IOptions<MetropolOptions>>().Value;
+            client.BaseAddress = new Uri(options.AuthBaseUrl);
+            client.Timeout = TimeSpan.FromSeconds(15);
+        });
+
+        services.AddScoped<MetropolTokenService>();
+
+        // API tarafı (vpos/ivr uçları) — ayrı base URL (testapi.metropolcard.com).
+        // Retry policy bilinçli olarak YOK: para uçlarında çift işlem riski (CLAUDE.md §6);
+        // para dışı uçlarda retry, uygulama katmanında uca özgü eklenebilir.
+        services.AddHttpClient<IMetropolApiClient, MetropolApiClient>((provider, client) =>
+        {
+            var options = provider.GetRequiredService<IOptions<MetropolOptions>>().Value;
+            client.BaseAddress = new Uri(options.ApiBaseUrl);
+            client.Timeout = TimeSpan.FromSeconds(30);
+        });
 
         return services;
     }
