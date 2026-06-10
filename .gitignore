@@ -1,0 +1,53 @@
+# ── Sırlar / ortam ──────────────────────────────────────
+.env
+.env.*
+!.env.example
+*.pfx
+*.key
+secrets.json
+
+# ── .NET ────────────────────────────────────────────────
+bin/
+obj/
+out/
+artifacts/
+*.user
+*.suo
+.vs/
+project.lock.json
+TestResults/
+coverage*.json
+coverage*.xml
+*.coverage
+
+# ── Node / istemciler ───────────────────────────────────
+node_modules/
+dist/
+build/
+.cache/
+.parcel-cache/
+*.tsbuildinfo
+npm-debug.log*
+yarn-error.log
+.eslintcache
+.vite/
+
+# ── React Native ────────────────────────────────────────
+mobile/ios/Pods/
+mobile/ios/build/
+mobile/android/app/build/
+mobile/android/build/
+mobile/android/.gradle/
+mobile/android/local.properties
+*.jsbundle
+.metro-health-check*
+
+# ── IDE / OS ────────────────────────────────────────────
+.idea/
+*.swp
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# ── Docker / infra ──────────────────────────────────────
+infra/docker/data/

@@ -1,0 +1,16 @@
+<Project Sdk="Microsoft.NET.Sdk.Web">
+
+  <ItemGroup>
+    <ProjectReference Include="..\MetropolBusiness.Application\MetropolBusiness.Application.csproj" />
+    <ProjectReference Include="..\MetropolBusiness.Infrastructure\MetropolBusiness.Infrastructure.csproj" />
+    <ProjectReference Include="..\MetropolBusiness.Integration.Metropol\MetropolBusiness.Integration.Metropol.csproj" />
+    <ProjectReference Include="..\MetropolBusiness.Integration.Gemini\MetropolBusiness.Integration.Gemini.csproj" />
+  </ItemGroup>
+
+  <PropertyGroup>
+    <TargetFramework>net8.0</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+  </PropertyGroup>
+
+</Project>

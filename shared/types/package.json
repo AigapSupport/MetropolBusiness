@@ -1,0 +1,8 @@
+{
+  "name": "@metropolbusiness/shared-types",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Web + admin + mobile ortak DTO tipleri. Kaynak: docs/API_CONTRACT.md. İstemciler '@shared/*' path alias'ı ile src/ altındaki TS kaynaklarını doğrudan tüketir.",
+  "main": "src/index.ts",
+  "types": "src/index.ts"
+}

@@ -1,0 +1,17 @@
+# Satır sonu normalizasyonu — repo'da LF (.editorconfig ile uyumlu)
+* text=auto eol=lf
+
+# Windows'a özgü dosyalar CRLF kalır
+*.ps1 text eol=crlf
+*.cmd text eol=crlf
+*.bat text eol=crlf
+
+# İkili dosyalar
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.gif binary
+*.ico binary
+*.pdf binary
+*.woff binary
+*.woff2 binary

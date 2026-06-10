@@ -1,0 +1,9 @@
+<Project>
+  <!-- Tüm backend projeleri için ortak ayarlar (CLAUDE.md §7: nullable açık). -->
+  <PropertyGroup>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <EnforceCodeStyleInBuild>true</EnforceCodeStyleInBuild>
+    <GenerateDocumentationFile>false</GenerateDocumentationFile>
+  </PropertyGroup>
+</Project>
