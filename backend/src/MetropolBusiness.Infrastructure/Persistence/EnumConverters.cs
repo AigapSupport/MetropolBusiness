@@ -28,6 +28,40 @@ internal static class EnumConverters
     public static readonly ValueConverter<RequestStatus, string> RequestStatusConverter =
         new(status => RequestStatusToDb(status), value => RequestStatusFromDb(value));
 
+    public static readonly ValueConverter<ConversationType, string> ConversationTypeConverter =
+        new(type => ConversationTypeToDb(type), value => ConversationTypeFromDb(value));
+
+    public static readonly ValueConverter<ChatSenderType, string> ChatSenderTypeConverter =
+        new(type => ChatSenderTypeToDb(type), value => ChatSenderTypeFromDb(value));
+
+    internal static string ConversationTypeToDb(ConversationType type) => type switch
+    {
+        ConversationType.Direct => "direct",
+        ConversationType.Assistant => "assistant",
+        _ => throw new ArgumentOutOfRangeException(nameof(type), type, null),
+    };
+
+    internal static ConversationType ConversationTypeFromDb(string value) => value switch
+    {
+        "direct" => ConversationType.Direct,
+        "assistant" => ConversationType.Assistant,
+        _ => throw new ArgumentOutOfRangeException(nameof(value), value, null),
+    };
+
+    internal static string ChatSenderTypeToDb(ChatSenderType type) => type switch
+    {
+        ChatSenderType.User => "user",
+        ChatSenderType.Assistant => "assistant",
+        _ => throw new ArgumentOutOfRangeException(nameof(type), type, null),
+    };
+
+    internal static ChatSenderType ChatSenderTypeFromDb(string value) => value switch
+    {
+        "user" => ChatSenderType.User,
+        "assistant" => ChatSenderType.Assistant,
+        _ => throw new ArgumentOutOfRangeException(nameof(value), value, null),
+    };
+
     internal static string RequestStatusToDb(RequestStatus status) => status switch
     {
         RequestStatus.Pending => "pending",

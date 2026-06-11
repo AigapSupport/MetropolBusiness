@@ -10,4 +10,7 @@ public sealed class GeminiOptions
 
     public string ApiKey { get; init; } = string.Empty;
     public string Model { get; init; } = "gemini-2.0-flash";
+
+    /// <summary>generateContent base URL'i — testte sahte sunucuya yönlendirilebilir.</summary>
+    public string BaseUrl { get; init; } = "https://generativelanguage.googleapis.com";
 }

@@ -40,6 +40,10 @@ public class AppDbContext(DbContextOptions<AppDbContext> options, ITenantContext
     public DbSet<LeaveRequest> LeaveRequests => Set<LeaveRequest>();
     public DbSet<ExpenseRequest> ExpenseRequests => Set<ExpenseRequest>();
     public DbSet<MerchantFeedback> MerchantFeedbacks => Set<MerchantFeedback>();
+    public DbSet<Assistant> Assistants => Set<Assistant>();
+    public DbSet<Conversation> Conversations => Set<Conversation>();
+    public DbSet<ConversationParticipant> ConversationParticipants => Set<ConversationParticipant>();
+    public DbSet<Message> Messages => Set<Message>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -109,6 +113,17 @@ public class AppDbContext(DbContextOptions<AppDbContext> options, ITenantContext
             .HasQueryFilter(e => e.TenantId == _tenantContext.TenantId);
         modelBuilder.Entity<MerchantFeedback>()
             .HasQueryFilter(f => f.TenantId == _tenantContext.TenantId);
+
+        // Sohbet (Faz 2.3): hepsi tenant filtreli — sohbet YALNIZCA aynı firma içinde
+        // (PRD §9.3); katılımcı tablosu ebeveyn konuşma üzerinden filtrelenir.
+        modelBuilder.Entity<Assistant>()
+            .HasQueryFilter(a => a.TenantId == _tenantContext.TenantId);
+        modelBuilder.Entity<Conversation>()
+            .HasQueryFilter(c => c.TenantId == _tenantContext.TenantId);
+        modelBuilder.Entity<ConversationParticipant>()
+            .HasQueryFilter(p => p.Conversation!.TenantId == _tenantContext.TenantId);
+        modelBuilder.Entity<Message>()
+            .HasQueryFilter(m => m.TenantId == _tenantContext.TenantId);
     }
 
     public override Task<int> SaveChangesAsync(CancellationToken cancellationToken = default)

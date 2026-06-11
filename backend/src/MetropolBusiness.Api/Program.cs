@@ -66,8 +66,28 @@ builder.Services
                 ? null
                 : new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwt.SigningKey)),
         };
+
+        // SignalR: WebSocket'te Authorization header taşınamaz; token yalnızca
+        // /hubs yollarında access_token query parametresinden okunur (API_CONTRACT §10).
+        options.Events = new JwtBearerEvents
+        {
+            OnMessageReceived = context =>
+            {
+                var accessToken = context.Request.Query["access_token"];
+                if (!string.IsNullOrEmpty(accessToken)
+                    && context.HttpContext.Request.Path.StartsWithSegments("/hubs"))
+                {
+                    context.Token = accessToken;
+                }
+
+                return Task.CompletedTask;
+            },
+        };
     });
 builder.Services.AddAppAuthorization();
+
+// Sohbet realtime (Faz 2.3) — Redis backplane çoklu instance'ta eklenecek (ARCHITECTURE §7).
+builder.Services.AddSignalR();
 
 // Katman kayıtları — options pattern her projenin kendi DI uzantısında bağlanır.
 builder.Services.AddInfrastructure(builder.Configuration);
@@ -83,6 +103,7 @@ app.UseAuthorization();
 
 app.MapHealthChecks("/health");
 app.MapControllers();
+app.MapHub<MetropolBusiness.Api.Hubs.ChatHub>("/hubs/chat");
 
 app.Run();
 

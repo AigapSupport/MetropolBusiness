@@ -154,10 +154,10 @@
 - [ ] Mobile: grid, kampanya liste+detay, kupon, hediye çeki (listeleme)
 
 ### 2.3 Sohbet
-- [ ] SignalR hub (join/send/receive/typing/read) + tenant izolasyonu
-- [ ] Entity: Conversation, Message, Assistant
-- [ ] Backend: conversations/messages/assistants uçları
-- [ ] Gemini entegrasyonu (backend; anahtar backend'de; PII'siz prompt)
+- [x] SignalR hub (join/send/receive/typing/read) + tenant izolasyonu — `Api/Hubs/ChatHub` (ince; iş mantığı `ChatMessagingService`'te), JWT access_token query (yalnız /hubs yolu), katılımcı olmayan gruba alınmaz; AI akışı: AssistantTyping → Gemini → ReceiveMessage; Redis backplane çoklu instance'ta
+- [x] Entity: Conversation, Message, Assistant (+ConversationParticipant) — `ChatEntities` migration; mesajlar kalıcı (AI cevapları dahil — denetlenebilirlik), read_by jsonb
+- [x] Backend: conversations/messages/assistants uçları — `ChatController` (§10 birebir); direct konuşma aynı ikili için tekilleştirilir; asistan oluşturma yalnız CompanyAdmin (PRD §17.2); persona listelerde dönmez (prompt sızmaz); kullanıcı arama aynı tenant
+- [x] Gemini entegrasyonu (backend; anahtar backend'de; PII'siz prompt) — `GeminiClient` (generateContent, anahtar yalnız URL'de, loglanmaz) + persona'ya kurumsal PII sınır cümlesi; Gemini hatasında kullanıcı mesajı kayıtlı kalır, PROVIDER_UNAVAILABLE döner; 8 test (fake Gemini)
 - [ ] Mobile: sohbet listesi, birebir sohbet, AI sohbet (yazıyor...), AI asistan oluştur, kullanıcı arama
 - [ ] Offline mesaj kuyruğu
 
