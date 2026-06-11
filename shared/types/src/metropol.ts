@@ -186,6 +186,11 @@ export interface ConfirmRecipientCardResponse {
   receiverToken: string;
 }
 
+/** GET /metropol/transfer/receive-qr — kendi kartım için ''para al'' QR yükü (alıcı yarısı). */
+export interface ReceiveQrResponse {
+  qrPayload: string;
+}
+
 export interface SavedRecipient {
   id: string;
   label: string;

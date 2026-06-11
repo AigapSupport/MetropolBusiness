@@ -24,6 +24,7 @@ import { TransferCardRecipientScreen } from '@/screens/Metropol/Transfer/Transfe
 import { TransferConfirmScreen } from '@/screens/Metropol/Transfer/TransferConfirmScreen';
 import { TransferFormScreen } from '@/screens/Metropol/Transfer/TransferFormScreen';
 import { TransferMenuScreen } from '@/screens/Metropol/Transfer/TransferMenuScreen';
+import { TransferReceiveQrScreen } from '@/screens/Metropol/Transfer/TransferReceiveQrScreen';
 import { TransferQrScreen } from '@/screens/Metropol/Transfer/TransferQrScreen';
 import { TransferSuccessScreen } from '@/screens/Metropol/Transfer/TransferSuccessScreen';
 
@@ -51,6 +52,7 @@ export function MetropolStack() {
       {/* Transfer (PRD §8.7) */}
       <Stack.Screen name="TransferMenu" component={TransferMenuScreen} />
       <Stack.Screen name="TransferForm" component={TransferFormScreen} />
+      <Stack.Screen name="TransferReceiveQr" component={TransferReceiveQrScreen} />
       <Stack.Screen name="TransferQr" component={TransferQrScreen} />
       {/* "Başka Karta" alıcı doğrulama — 2 adım (AddAccount OTP akışı) */}
       <Stack.Screen name="TransferCardRecipient" component={TransferCardRecipientScreen} />

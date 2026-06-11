@@ -21,6 +21,7 @@ export type BiometricsModule = typeof import('react-native-biometrics');
 export type VideoModule = typeof import('react-native-video');
 export type ClipboardModule = typeof import('@react-native-clipboard/clipboard');
 export type MapsModule = typeof import('react-native-maps');
+export type GeolocationModule = typeof import('@react-native-community/geolocation');
 
 function loadVisionCamera(): VisionCameraModule | null {
   try {
@@ -76,3 +77,13 @@ function loadMaps(): MapsModule | null {
 }
 
 export const mapsModule: MapsModule | null = loadMaps();
+
+function loadGeolocation(): GeolocationModule | null {
+  try {
+    return require('@react-native-community/geolocation') as GeolocationModule;
+  } catch {
+    return null;
+  }
+}
+
+export const geolocationModule: GeolocationModule | null = loadGeolocation();

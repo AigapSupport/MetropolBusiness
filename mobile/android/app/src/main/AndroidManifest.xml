@@ -3,6 +3,7 @@
     <uses-permission android:name="android.permission.INTERNET" />
     <!-- QR okuma — react-native-vision-camera (PayQr/TransferQr ekranları) -->
     <uses-permission android:name="android.permission.CAMERA" />
+    <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />
     <!-- Biyometrik giriş — react-native-biometrics (PRD §5.1) -->
     <uses-permission android:name="android.permission.USE_BIOMETRIC" />
 

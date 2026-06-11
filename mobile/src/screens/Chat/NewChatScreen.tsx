@@ -19,6 +19,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import type { ConversationListItem } from '@shared/chat';
 import { ScreenHeader } from '@/components/ScreenHeader';
 import { useAssistants, useChatUserSearch, useCreateConversation } from '@/hooks/useChat';
+import { useMe } from '@/hooks/useMe';
 import type { ChatStackParamList } from '@/navigation/types';
 import { useTheme } from '@/theme/ThemeProvider';
 
@@ -31,6 +32,10 @@ export function NewChatScreen({ navigation }: Props) {
   const users = useChatUserSearch(query);
   const assistants = useAssistants();
   const create = useCreateConversation();
+  const me = useMe();
+  // Asistanı firma admin tanımlar (PRD §17.2) — giriş yalnız ona görünür;
+  // asıl yetki backend policy'sindedir (CompanyAdmin).
+  const canCreateAssistant = me.data?.role === 'company_admin';
 
   function openConversation(conversation: ConversationListItem): void {
     navigation.replace('Conversation', {
@@ -89,6 +94,23 @@ export function NewChatScreen({ navigation }: Props) {
             <Text style={{ color: theme.colors.ink2, fontWeight: '700', fontSize: theme.fontSize.sm }}>
               {t('chat.assistantsHeader')}
             </Text>
+            {canCreateAssistant ? (
+              <Pressable
+                onPress={() => navigation.navigate('CreateAssistant')}
+                accessibilityRole="button"
+                style={{
+                  borderWidth: 1,
+                  borderColor: theme.colors.brand,
+                  borderRadius: theme.radius.md,
+                  padding: theme.spacing.md,
+                  alignItems: 'center',
+                }}
+              >
+                <Text style={{ color: theme.colors.brand, fontWeight: '800' }}>
+                  {t('chat.createAssistant.entry')}
+                </Text>
+              </Pressable>
+            ) : null}
             {assistants.isPending ? (
               <ActivityIndicator color={theme.colors.brand} />
             ) : (

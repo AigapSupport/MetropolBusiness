@@ -45,6 +45,8 @@ export type ChatStackParamList = {
   ChatList: undefined;
   Conversation: { id: string; title: string; isAssistant: boolean };
   NewChat: undefined;
+  /** Yalnız company_admin görür — PRD §17.2 (yetki backend policy'sinde). */
+  CreateAssistant: undefined;
 };
 
 /** Diğer sekmesi stack'i (PRD §10) — modül grid + İK ekranları. */
@@ -135,6 +137,8 @@ export type MetropolStackParamList = {
   /** mode 'fixed': alıcı önceden çözülmüş (kayıtlı alıcı / QR / doğrulanmış kart) — receiver zorunlu. */
   TransferForm: { mode: 'self' | 'phone' | 'fixed'; receiver?: TransferReceiverParam };
   TransferQr: undefined;
+  /** QR ile para AL: kendi kartım için QR yükü gösterimi (akışın alıcı yarısı). */
+  TransferReceiveQr: undefined;
   // "Başka Karta" alıcı doğrulama — 2 adım (AddAccount OTP akışı, API_CONTRACT §8)
   TransferCardRecipient: undefined;
   TransferCardOtp: { cardNo: string; phone: string; validationGuid: string };

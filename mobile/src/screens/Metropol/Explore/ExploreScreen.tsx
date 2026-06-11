@@ -21,7 +21,8 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import type { Merchant } from '@shared/metropol';
 import { ScreenHeader } from '@/components/ScreenHeader';
 import { useMerchantFeedback, useMerchants } from '@/hooks/useMerchants';
-import { mapsModule } from '@/utils/nativeModules';
+import { clusterByGrid, distanceKm, formatDistance, type LatLng } from '@/utils/geo';
+import { geolocationModule, mapsModule } from '@/utils/nativeModules';
 import { useTheme } from '@/theme/ThemeProvider';
 
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
@@ -36,6 +37,16 @@ const SECTORS = [
   { id: 1, key: 'clothing' },
 ] as const;
 
+/** Metropol lat/lng STRING döner — sayıya çevrilip mesafe hesaplanır. */
+function distanceOf(merchant: Merchant, from: LatLng): number {
+  const lat = Number(merchant.lat);
+  const lng = Number(merchant.lng);
+  if (!Number.isFinite(lat) || !Number.isFinite(lng)) {
+    return Number.POSITIVE_INFINITY; // koordinatsız kayıt listenin sonuna düşer
+  }
+  return distanceKm(from, { latitude: lat, longitude: lng });
+}
+
 export function ExploreScreen({ navigation }: Props) {
   const { t } = useTranslation();
   const { theme } = useTheme();
@@ -45,6 +56,7 @@ export function ExploreScreen({ navigation }: Props) {
   const [feedbackText, setFeedbackText] = useState('');
   const [feedbackOpen, setFeedbackOpen] = useState(false);
 
+  const [myLocation, setMyLocation] = useState<LatLng | null>(null);
   const merchants = useMerchants(sectorId);
   const feedback = useMerchantFeedback();
 
@@ -52,16 +64,38 @@ export function ExploreScreen({ navigation }: Props) {
     const items = merchants.data?.items ?? [];
     const active = items.filter((m) => m.activeFlag === 1);
     const term = search.trim().toLocaleLowerCase('tr');
-    if (term === '') {
-      return active;
+    const matched =
+      term === ''
+        ? active
+        : active.filter(
+            (m) =>
+              m.signboardName.toLocaleLowerCase('tr').includes(term) ||
+              m.city.toLocaleLowerCase('tr').includes(term) ||
+              m.district.toLocaleLowerCase('tr').includes(term),
+          );
+
+    // Konum varsa liste mesafeye göre sıralanır (PRD §8.5 mağaza kartlarında mesafe).
+    if (myLocation === null) {
+      return matched;
     }
-    return active.filter(
-      (m) =>
-        m.signboardName.toLocaleLowerCase('tr').includes(term) ||
-        m.city.toLocaleLowerCase('tr').includes(term) ||
-        m.district.toLocaleLowerCase('tr').includes(term),
+    return [...matched].sort(
+      (a, b) => distanceOf(a, myLocation) - distanceOf(b, myLocation),
     );
-  }, [merchants.data, search]);
+  }, [merchants.data, search, myLocation]);
+
+  function locate(): void {
+    // Guard'lı native modül: yoksa buton zaten gizlidir; izin reddi sessizce yutulur
+    // (kullanıcı tekrar deneyebilir), konumsuz liste davranışı bozulmaz.
+    geolocationModule?.default.getCurrentPosition(
+      (position) =>
+        setMyLocation({
+          latitude: position.coords.latitude,
+          longitude: position.coords.longitude,
+        }),
+      () => setMyLocation(null),
+      { enableHighAccuracy: false, timeout: 10_000 },
+    );
+  }
 
   function openDirections(merchant: Merchant): void {
     // Native harita modülü gerektirmez — cihazın harita uygulamasını açar.
@@ -134,6 +168,28 @@ export function ExploreScreen({ navigation }: Props) {
               </Text>
             </Pressable>
           ))}
+          {geolocationModule !== null ? (
+            <Pressable
+              onPress={locate}
+              accessibilityRole="button"
+              style={{
+                paddingHorizontal: theme.spacing.md,
+                paddingVertical: 6,
+                borderRadius: 999,
+                backgroundColor: myLocation !== null ? theme.colors.navy : theme.colors.card,
+              }}
+            >
+              <Text
+                style={{
+                  color: myLocation !== null ? '#FFFFFF' : theme.colors.ink,
+                  fontWeight: '700',
+                  fontSize: theme.fontSize.sm,
+                }}
+              >
+                {t('explore.myLocation')}
+              </Text>
+            </Pressable>
+          ) : null}
         </View>
       </View>
 
@@ -152,26 +208,38 @@ export function ExploreScreen({ navigation }: Props) {
             <View style={[styles.map, { borderRadius: theme.radius.lg, margin: theme.spacing.lg }]}>
               <MapView
                 style={StyleSheet.absoluteFill}
-                initialRegion={{
-                  latitude: Number(filtered[0].lat) || 41.01,
-                  longitude: Number(filtered[0].lng) || 28.97,
-                  latitudeDelta: 0.2,
-                  longitudeDelta: 0.2,
+                region={{
+                  latitude: myLocation?.latitude ?? (Number(filtered[0].lat) || 41.01),
+                  longitude: myLocation?.longitude ?? (Number(filtered[0].lng) || 28.97),
+                  latitudeDelta: myLocation === null ? 0.2 : 0.05,
+                  longitudeDelta: myLocation === null ? 0.2 : 0.05,
                 }}
               >
-                {/* Pin yoğunluğu: ilk 100 pin; kümeleme kütüphanesi Faz 3 performans turunda. */}
-                {filtered.slice(0, 100).map((merchant) => (
-                  <Marker
-                    key={merchant.merchantCode}
-                    coordinate={{
-                      latitude: Number(merchant.lat) || 0,
-                      longitude: Number(merchant.lng) || 0,
-                    }}
-                    title={merchant.signboardName}
-                    description={merchant.sector}
-                    onPress={() => setSelected(merchant)}
-                  />
-                ))}
+                {/* Basit grid kümeleme (zoom takipsiz v1; kütüphaneli kümeleme Faz 3).
+                    Tek üyeli hücre normal pin, çok üyeli hücre "N nokta" pinidir. */}
+                {clusterByGrid(
+                  filtered
+                    .filter((m) => Number.isFinite(Number(m.lat)) && Number.isFinite(Number(m.lng)))
+                    .slice(0, 300)
+                    .map((m) => ({ latitude: Number(m.lat), longitude: Number(m.lng), item: m })),
+                ).map((cluster) =>
+                  cluster.items.length === 1 ? (
+                    <Marker
+                      key={cluster.items[0].merchantCode}
+                      coordinate={{ latitude: cluster.latitude, longitude: cluster.longitude }}
+                      title={cluster.items[0].signboardName}
+                      description={cluster.items[0].sector}
+                      onPress={() => setSelected(cluster.items[0])}
+                    />
+                  ) : (
+                    <Marker
+                      key={`cluster-${cluster.latitude}-${cluster.longitude}`}
+                      coordinate={{ latitude: cluster.latitude, longitude: cluster.longitude }}
+                      title={t('explore.clusterTitle', { count: cluster.items.length })}
+                      onPress={() => setSelected(cluster.items[0])}
+                    />
+                  ),
+                )}
               </MapView>
             </View>
           ) : (
@@ -214,6 +282,9 @@ export function ExploreScreen({ navigation }: Props) {
                 </Text>
                 <Text style={{ color: theme.colors.ink2, fontSize: theme.fontSize.sm }}>
                   {item.sector} · {item.district}/{item.city}
+                  {myLocation !== null && Number.isFinite(distanceOf(item, myLocation))
+                    ? ` · ${formatDistance(distanceOf(item, myLocation))}`
+                    : ''}
                 </Text>
               </Pressable>
             )}

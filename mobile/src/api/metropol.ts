@@ -16,6 +16,7 @@ import type {
   ConfirmRecipientCardResponse,
   PresaleInfoRequest,
   PresaleInfoResponse,
+  ReceiveQrResponse,
   ResolveQrRequest,
   ResolveQrResponse,
   SaleConfirmRequest,
@@ -104,6 +105,10 @@ export const metropolApi = {
     return api.post<TransferResponse>('/metropol/transfer', request, {
       'Idempotency-Key': idempotencyKey,
     });
+  },
+  /** Kendi kartım için para-al QR yükü (akışın alıcı yarısı, API_CONTRACT §8). */
+  getReceiveQr(cardId: string): Promise<ReceiveQrResponse> {
+    return api.get<ReceiveQrResponse>(`/metropol/transfer/receive-qr?cardId=${cardId}`);
   },
   /** QR yükünden alıcı çözümleme (maskeli ad/no + opak token). */
   resolveTransferQr(request: ResolveQrRequest): Promise<ResolveQrResponse> {

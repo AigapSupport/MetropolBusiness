@@ -152,6 +152,12 @@ export function TransferMenuScreen({ navigation }: Props) {
             title={t('metropol.transfer.qrRecipient')}
             subtitle={t('metropol.transfer.qrRecipientSub')}
             onPress={() => navigation.navigate('TransferQr')}
+          />
+          <MenuRow
+            glyph="◈"
+            title={t('metropol.transfer.receiveQrTitle')}
+            subtitle={t('metropol.transfer.receiveQrSub')}
+            onPress={() => navigation.navigate('TransferReceiveQr')}
             last
           />
         </View>

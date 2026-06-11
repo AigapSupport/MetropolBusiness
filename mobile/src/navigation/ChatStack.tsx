@@ -2,6 +2,7 @@
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 
 import { ChatListScreen } from '@/screens/Chat/ChatListScreen';
+import { CreateAssistantScreen } from '@/screens/Chat/CreateAssistantScreen';
 import { ConversationScreen } from '@/screens/Chat/ConversationScreen';
 import { NewChatScreen } from '@/screens/Chat/NewChatScreen';
 
@@ -15,6 +16,7 @@ export function ChatStack() {
       <Stack.Screen name="ChatList" component={ChatListScreen} />
       <Stack.Screen name="Conversation" component={ConversationScreen} />
       <Stack.Screen name="NewChat" component={NewChatScreen} />
+      <Stack.Screen name="CreateAssistant" component={CreateAssistantScreen} />
     </Stack.Navigator>
   );
 }

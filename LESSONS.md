@@ -133,3 +133,13 @@ wsl --update
 **Belirti:** Faz 2 backend workflow'unda iki alt-agent "monthly spend limit" hatasıyla öldü; ilk agent 8 Domain entity dosyasını yazmış hâlde kaldı.
 
 **Çözüm/Ders:** Kalan iş ana oturumda elle tamamlandı (entity'ler devralındı, üzerine config/servis/controller/test yazıldı). Agent ölümünde çalışma ağacını `git status` ile kontrol et — yarım kalan dosyalar derlenebilir durumda olabilir ve devralınabilir.
+
+---
+
+## 2026-06-11 — ResetPin & DeactivateCard kapsam dışı (proje sahibi kararı)
+
+**Karar:** PIN sıfırlama (`ResetPin`) ve kart deaktivasyonu (`DeactivateCard`) IVR akışları BU PROJEDE OLMAYACAK; ihtiyaç doğarsa ileride açılacak.
+
+**Durum:** `IMetropolApiClient`’ta tipli metotlar hazır (sözleşme dosyasından); bizim API’de proxy ucu ve mobil ekran bilinçli olarak YOK. Açmak gerektiğinde: `Application/Cards`’a servis + `MetropolCardsController`’a uç + mobil Güvenlik/Kart Kullanım Ayarları ekranları eklenir (OTP’li IVR akışı: CardNo+MobileNo+OtpRefCode+Otp).
+
+**Not:** Aynı ailedeki `SendOtp`/`UserBalance` IVR uçları da kullanılmıyor (uygulama OTP’si kendi backend’imizde; bakiye `BalanceQuery` ile).

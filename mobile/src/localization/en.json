@@ -248,7 +248,12 @@
                                       "noSavedRecipients":  "You have no saved recipients yet. You can save one with \"Save as a recipient\" while confirming a transfer.",
                                       "deleteRecipientTitle":  "Delete saved recipient?",
                                       "deleteRecipientMessage":  "\"{{label}}\" will be removed from your saved recipients.",
-                                      "deleteRecipientConfirm":  "Delete"
+                                      "deleteRecipientConfirm":  "Delete",
+                                      "qrImageSoon":  "QR image arrives with the native build.",
+                                      "copyPayload":  "Copy Payload",
+                                      "receiveQrHint":  "Pick your card; the sender can scan/paste the generated payload to transfer to you.",
+                                      "receiveQrSub":  "Create a QR for your card",
+                                      "receiveQrTitle":  "Receive via QR"
                                   },
                      "history":  {
                                      "approvalNo":  "Approval No: {{no}}",
@@ -411,7 +416,19 @@
                  "assistantsHeader":  "AI ASSISTANTS",
                  "peopleHeader":  "PEOPLE",
                  "searchPlaceholder":  "Search name…",
-                 "searchHint":  "Type to search people in your company."
+                 "searchHint":  "Type to search people in your company.",
+                 "read":  "Read",
+                 "createAssistant":  {
+                                         "hint":  "The assistant name and persona (system instruction) apply to all users in your company. It must not contain personal data.",
+                                         "namePlaceholder":  "Expense Bot",
+                                         "avatar":  "Avatar URL",
+                                         "personaPlaceholder":  "Help employees with expense processes…",
+                                         "submit":  "Create",
+                                         "name":  "Assistant name",
+                                         "persona":  "Persona / task definition",
+                                         "title":  "Create AI Assistant",
+                                         "entry":  "+ Create AI Assistant"
+                                     }
              },
     "explore":  {
                     "title":  "Explore",
@@ -428,6 +445,8 @@
                     "feedback":  "Feedback",
                     "feedbackPlaceholder":  "Your message…",
                     "feedbackSend":  "Send",
-                    "feedbackThanks":  "Thanks, your feedback was received."
+                    "feedbackThanks":  "Thanks, your feedback was received.",
+                    "myLocation":  "My Location",
+                    "clusterTitle":  "{{count}} spots"
                 }
 }

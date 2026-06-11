@@ -248,7 +248,12 @@
                                       "noSavedRecipients":  "Henüz kayıtlı alıcınız yok. Transfer onayında \"Tanımlı alıcı olarak ekle\" ile kaydedebilirsiniz.",
                                       "deleteRecipientTitle":  "Kayıtlı alıcıyı sil?",
                                       "deleteRecipientMessage":  "\"{{label}}\" kayıtlı alıcılarınızdan kaldırılacak.",
-                                      "deleteRecipientConfirm":  "Sil"
+                                      "deleteRecipientConfirm":  "Sil",
+                                      "qrImageSoon":  "QR görseli native kurulumla gelecek.",
+                                      "copyPayload":  "Yükü Kopyala",
+                                      "receiveQrHint":  "Kartını seç; oluşan QR yükünü gönderen kişi okutarak/yapıştırarak sana transfer yapabilir.",
+                                      "receiveQrSub":  "Kartın için QR oluştur",
+                                      "receiveQrTitle":  "QR ile Para Al"
                                   },
                      "history":  {
                                      "approvalNo":  "Onay No: {{no}}",
@@ -411,7 +416,19 @@
                  "assistantsHeader":  "AI ASİSTANLAR",
                  "peopleHeader":  "KİŞİLER",
                  "searchPlaceholder":  "İsim ara…",
-                 "searchHint":  "Firma içinden kişi aramak için yazın."
+                 "searchHint":  "Firma içinden kişi aramak için yazın.",
+                 "read":  "Okundu",
+                 "createAssistant":  {
+                                         "hint":  "Asistanın adı ve kişiliği (sistem talimatı) firmanızın tüm kullanıcıları için geçerlidir. Kişisel veri içermemelidir.",
+                                         "namePlaceholder":  "Gider Botu",
+                                         "avatar":  "Avatar URL",
+                                         "personaPlaceholder":  "Masraf süreçlerinde çalışanlara yardımcı ol…",
+                                         "submit":  "Oluştur",
+                                         "name":  "Asistan adı",
+                                         "persona":  "Kişilik / görev tanımı",
+                                         "title":  "AI Asistan Oluştur",
+                                         "entry":  "+ AI Asistan Oluştur"
+                                     }
              },
     "explore":  {
                     "title":  "Keşfet",
@@ -428,6 +445,8 @@
                     "feedback":  "Geri Bildirim",
                     "feedbackPlaceholder":  "Mesajınız…",
                     "feedbackSend":  "Gönder",
-                    "feedbackThanks":  "Geri bildiriminiz alındı, teşekkürler."
+                    "feedbackThanks":  "Geri bildiriminiz alındı, teşekkürler.",
+                    "myLocation":  "Konumum",
+                    "clusterTitle":  "{{count}} nokta"
                 }
 }

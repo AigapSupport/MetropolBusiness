@@ -43,9 +43,13 @@ export function ConversationScreen({ navigation, route }: Props) {
   /** Canlı eklenen mesajlar — geçmiş sorgusunun üstüne bindirilir (id ile teklenir). */
   const [liveMessages, setLiveMessages] = useState<ChatMessage[]>([]);
   const [assistantTyping, setAssistantTyping] = useState(false);
+  const [peerTyping, setPeerTyping] = useState(false);
+  /** Karşı tarafın okuduğu son mesajın zamanı — kendi balonlarımda "Okundu" işareti. */
+  const [peerReadUpTo, setPeerReadUpTo] = useState<string | null>(null);
   const [offline, setOffline] = useState(false);
   const [draft, setDraft] = useState('');
   const listRef = useRef<FlatList<ChatMessage>>(null);
+  const typingTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useFocusEffect(
     useCallback(() => {
@@ -65,6 +69,24 @@ export function ConversationScreen({ navigation, route }: Props) {
           if (conversationId === id) {
             setAssistantTyping(true);
           }
+        },
+        // Birebir "yazıyor…": karşı taraftan Typing geldiğinde 3 sn görünür (PRD §9.1).
+        onTyping: (conversationId) => {
+          if (conversationId !== id) {
+            return;
+          }
+          setPeerTyping(true);
+          if (typingTimer.current !== null) {
+            clearTimeout(typingTimer.current);
+          }
+          typingTimer.current = setTimeout(() => setPeerTyping(false), 3000);
+        },
+        // Okundu bilgisi: karşı taraf MarkRead yapınca kendi mesajlarım işaretlenir.
+        onRead: (conversationId, _userId, messageId) => {
+          if (conversationId !== id) {
+            return;
+          }
+          setPeerReadUpTo(messageId);
         },
         onError: () => setAssistantTyping(false),
         onConnectionChange: (connected) => setOffline(!connected),
@@ -99,8 +121,14 @@ export function ConversationScreen({ navigation, route }: Props) {
     });
   }
 
+  // Karşı tarafın okuduğu son mesajın zamanı: o ana kadarki kendi mesajlarım "okundu".
+  const peerReadAt =
+    peerReadUpTo === null ? null : (merged.find((m) => m.id === peerReadUpTo)?.createdAt ?? null);
+
   function renderBubble({ item }: { item: ChatMessage }) {
     const mine = item.senderId !== null && item.senderId === userId;
+    const readByPeer =
+      mine && peerReadAt !== null && new Date(item.createdAt) <= new Date(peerReadAt);
     return (
       <View
         style={[
@@ -124,6 +152,7 @@ export function ConversationScreen({ navigation, route }: Props) {
           }}
         >
           {new Date(item.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+          {readByPeer ? ` · ${t('chat.read')}` : ''}
         </Text>
       </View>
     );
@@ -164,7 +193,7 @@ export function ConversationScreen({ navigation, route }: Props) {
         />
       )}
 
-      {assistantTyping ? (
+      {assistantTyping || peerTyping ? (
         <Text
           style={{
             color: theme.colors.ink2,
