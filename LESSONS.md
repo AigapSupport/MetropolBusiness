@@ -159,3 +159,12 @@ Kurulum BAŞARILI: 5 container healthy, 7 migration uygulandı, 3 Traefik route 
 **4. seed.sql şema kayması.** Faz 0'da yazılan seed, sonraki migration'larla uyumsuz kaldı (`metropol_consumer_id`→`metropol_consumer_ref`, `modules.created_at/updated_at` zorunlu oldu). BEGIN/COMMIT transaction sayesinde hata temiz rollback yaptı. Seed güncellendi + panel admin'lerine dev şifresi eklendi (admin@demo.local & admin@atlas.local / Demo1234! — YALNIZCA dev). Ders: migration ekleyen her faz seed.sql'i de gözden geçirmeli.
 
 **Dev ortam künyesi:** VPS 213.136.89.144 (`aigap@`, bu makinedeki `~/.ssh/aigap_deploy` anahtarı) · repo `~/metropolbusiness` · `https://metropolapi.yedibella.com` (API+SignalR) / `metropolpanel` (firma) / `metropolyonetim` (platform) · güncelleme: `ssh ... 'cd ~/metropolbusiness && ./deploy.sh'`. Metropol sırları + Gemini key `.env.production`'da hâlâ CHANGE_ME — gelince doldurulup `docker compose ... up -d app` yeterli.
+
+---
+
+## 2026-06-11 — Windows Server'da Android APK build notları
+
+- **cmd.exe geçerli dizinden komut aramıyor** (sunucu sıkılaştırması): batch içinde `call gradlew.bat` "not recognized" verdi; **tam yol** (`call "C:\...\gradlew.bat"`) gerekiyor.
+- **Batch dosyaları CRLF ister**: Write tool LF yazar; .bat'ı PowerShell `Set-Content -Encoding Ascii` ile üret.
+- **sdkmanager --licenses stdin'den "y" almıyor** (PowerShell pipe → .bat): lisanslar `$ANDROID_HOME/licenses/android-sdk-license` dosyasına bilinen hash'ler yazılarak kabul edilir (CI standardı).
+- Araç zinciri admin'siz kuruldu: Temurin JDK 17 + cmdline-tools → `C:\Users\support.aigap\tools\{jdk-17.0.19+10, android-sdk}`; build betiği `mobile/android/build-apk.bat` (git'e girmez).
