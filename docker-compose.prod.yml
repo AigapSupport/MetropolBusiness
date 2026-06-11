@@ -56,9 +56,12 @@ services:
       ASPNETCORE_ENVIRONMENT: Production
       # appsettings.json'daki localhost Kestrel ucunu ezer (konteyner içi 0.0.0.0).
       Kestrel__Endpoints__Http__Url: http://0.0.0.0:8080
-      ConnectionStrings__Postgres: Host=db;Port=5432;Database=${DB_NAME};Username=${DB_USER};Password=${DB_PASSWORD}
+      # DİKKAT: 'db'/'redis' gibi jenerik adlar paylaşılan edge ağında BAŞKA
+      # projelerin alias'larıyla çakışıyor (NOAUTH sürprizi) — benzersiz
+      # container adları kullanılır.
+      ConnectionStrings__Postgres: Host=metropolbusiness-postgres;Port=5432;Database=${DB_NAME};Username=${DB_USER};Password=${DB_PASSWORD}
       Redis__Enabled: "true"
-      Redis__Configuration: redis:6379
+      Redis__Configuration: metropolbusiness-redis:6379
       Jwt__Issuer: metropolbusiness
       Jwt__Audience: metropolbusiness-clients
       Jwt__SigningKey: ${JWT_SIGNING_KEY}
