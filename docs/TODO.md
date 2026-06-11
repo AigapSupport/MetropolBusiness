@@ -164,10 +164,10 @@
 ### 2.4 İK modülleri
 - [x] Entity: LeaveRequest, ExpenseRequest (+durum/onay alanları: DecidedBy/DecidedAt/DecisionNote; tutar numeric(18,2))
 - [x] Backend: leave/expense uçları + approve/reject + modül yetki kontrolü — `IModuleAccessChecker` (segment→segment_modules→aktif modül; NOT_AUTHORIZED_MODULE 403) + `HrService` (gün sayısı backend'de, yalnız pending'ten karar, kendi talebini onaylayamama, onay ekranında talep eden adı) + `HrModulesController` + `CompanyRequestsController` (firma görünümü). NOT: `expense_approval` yetkisi izin onayını da kapsar (ayrı leave_approval modülü ilk sürümde yok); onaylayıcı atama (PUT approvers) ilk sürümde yok — PRD §17.6 tek aşamalı. 9 test
-- [ ] Mobile: Diğer sekmesi modül grid (yetkiye göre)
-- [ ] Mobile: izin talebi + geçmiş
-- [ ] Mobile: masraf talebi (fiş yükleme) + geçmiş
-- [ ] Mobile: masraf onay (yönetici)
+- [x] Mobile: Diğer sekmesi modül grid (yetkiye göre) — `OtherStack`/`OtherScreen`: GET /me/modules'tan 2'li grid, expense_approval modülünde bekleyen sayısı rozeti; yetki yine backend'de (PRD §2.1)
+- [x] Mobile: izin talebi + geçmiş — `LeaveRequestsScreen`: tip çipleri, tarih girişi (YYYY-AA-GG metin; yerel takvim native modül gerektirdiğinden Faz sonrası), gün önizleme (hesap backend'de), durum rozetli geçmiş
+- [x] Mobile: masraf talebi (fiş yükleme) + geçmiş — `ExpenseRequestsScreen`: tip/tutar(string, float yok)/tarih/fiş URL'i (dosya yükleme altyapısı ayrı iş — TODO) + geçmiş
+- [x] Mobile: masraf onay (yönetici) — `ApprovalsScreen`: masraf+izin sekmeli bekleyenler (talep eden adı, fiş linki), Onayla/Reddet
 - [x] Web: firma masraf/izin genel görünüm — `RequestsPage` (sekmeli izin/masraf listeleri, durum filtresi, sayfalama, fiş linki). Onaylayıcı atama ilk sürümde YOK (PRD §17.6 tek aşamalı; approver rolü + modül yetkisi yeter)
 
 ### 2.5 Hesabım/Profil tamamlama

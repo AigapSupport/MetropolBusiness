@@ -302,5 +302,64 @@
                      "giftcards":  {
                                        "title":  "Hediye Çekleri"
                                    }
-                 }
+                 },
+    "other":  {
+                  "subtitle":  "İK \u0026 kurumsal modüller",
+                  "empty":  "Segmentinize atanmış modül yok.",
+                  "info":  "Modüller, firma içindeki yetki segmentinize göre görüntülenir. Yeni modüller İK tarafından tanımlanabilir.",
+                  "historyTitle":  "GEÇMİŞ TALEPLER",
+                  "status":  {
+                                 "pending":  "Beklemede",
+                                 "approved":  "Onaylandı",
+                                 "rejected":  "Reddedildi"
+                             },
+                  "leave":  {
+                                "title":  "İzin Talebi",
+                                "typeLabel":  "İzin Tipi",
+                                "types":  {
+                                              "annual":  "Yıllık İzin",
+                                              "excuse":  "Mazeret İzni",
+                                              "sick":  "Hastalık İzni",
+                                              "unpaid":  "Ücretsiz İzin"
+                                          },
+                                "startDate":  "Başlangıç (YYYY-AA-GG)",
+                                "endDate":  "Bitiş (YYYY-AA-GG)",
+                                "totalDays":  "Toplam Gün",
+                                "daysValue":  "{{count}} gün",
+                                "noteLabel":  "Açıklama",
+                                "notePlaceholder":  "Opsiyonel",
+                                "submit":  "Talep Gönder",
+                                "empty":  "İzin talebiniz yok.",
+                                "dateFormatError":  "Tarihi YYYY-AA-GG biçiminde girin (örn. 2026-07-01)."
+                            },
+                  "expense":  {
+                                  "title":  "Masraf Talebi",
+                                  "typeLabel":  "Masraf Tipi",
+                                  "types":  {
+                                                "travel":  "Ulaşım",
+                                                "meal":  "Yemek",
+                                                "lodging":  "Konaklama",
+                                                "stationery":  "Kırtasiye",
+                                                "other":  "Diğer"
+                                            },
+                                  "amountLabel":  "Tutar (₺)",
+                                  "dateLabel":  "Tarih (YYYY-AA-GG)",
+                                  "receiptLabel":  "Fiş / Fotoğraf URL",
+                                  "submit":  "Masraf Gönder",
+                                  "empty":  "Masraf talebiniz yok.",
+                                  "amountError":  "Geçerli bir tutar girin (örn. 1500.00)."
+                              },
+                  "approvals":  {
+                                    "title":  "Masraf Onay",
+                                    "tab":  {
+                                                "expense":  "Masraflar",
+                                                "leave":  "İzinler"
+                                            },
+                                    "approve":  "Onayla",
+                                    "reject":  "Reddet",
+                                    "empty":  "Bekleyen talep yok.",
+                                    "viewReceipt":  "Fişi Görüntüle",
+                                    "unknownRequester":  "Çalışan"
+                                }
+              }
 }

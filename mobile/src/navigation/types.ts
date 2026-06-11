@@ -30,6 +30,14 @@ export type BenefitsStackParamList = {
   BenefitItems: { kind: 'coupons' | 'giftcards' };
 };
 
+/** Diğer sekmesi stack'i (PRD §10) — modül grid + İK ekranları. */
+export type OtherStackParamList = {
+  ModulesGrid: undefined;
+  LeaveRequests: undefined;
+  ExpenseRequests: undefined;
+  Approvals: undefined;
+};
+
 /** Ana Sayfa stack'i (PRD §6) — feed + duyuru detayı + anket doldurma + video oynatma. */
 export type HomeStackParamList = {
   HomeFeed: undefined;

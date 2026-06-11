@@ -302,5 +302,64 @@
                      "giftcards":  {
                                        "title":  "Gift Cards"
                                    }
-                 }
+                 },
+    "other":  {
+                  "subtitle":  "HR \u0026 corporate modules",
+                  "empty":  "No modules assigned to your segment.",
+                  "info":  "Modules are shown based on your permission segment. New modules can be defined by HR.",
+                  "historyTitle":  "PAST REQUESTS",
+                  "status":  {
+                                 "pending":  "Pending",
+                                 "approved":  "Approved",
+                                 "rejected":  "Rejected"
+                             },
+                  "leave":  {
+                                "title":  "Leave Request",
+                                "typeLabel":  "Leave Type",
+                                "types":  {
+                                              "annual":  "Annual Leave",
+                                              "excuse":  "Excuse Leave",
+                                              "sick":  "Sick Leave",
+                                              "unpaid":  "Unpaid Leave"
+                                          },
+                                "startDate":  "Start (YYYY-MM-DD)",
+                                "endDate":  "End (YYYY-MM-DD)",
+                                "totalDays":  "Total Days",
+                                "daysValue":  "{{count}} days",
+                                "noteLabel":  "Note",
+                                "notePlaceholder":  "Optional",
+                                "submit":  "Submit Request",
+                                "empty":  "No leave requests.",
+                                "dateFormatError":  "Enter the date as YYYY-MM-DD (e.g. 2026-07-01)."
+                            },
+                  "expense":  {
+                                  "title":  "Expense Request",
+                                  "typeLabel":  "Expense Type",
+                                  "types":  {
+                                                "travel":  "Travel",
+                                                "meal":  "Meal",
+                                                "lodging":  "Lodging",
+                                                "stationery":  "Stationery",
+                                                "other":  "Other"
+                                            },
+                                  "amountLabel":  "Amount (₺)",
+                                  "dateLabel":  "Date (YYYY-MM-DD)",
+                                  "receiptLabel":  "Receipt / Photo URL",
+                                  "submit":  "Submit Expense",
+                                  "empty":  "No expense requests.",
+                                  "amountError":  "Enter a valid amount (e.g. 1500.00)."
+                              },
+                  "approvals":  {
+                                    "title":  "Expense Approval",
+                                    "tab":  {
+                                                "expense":  "Expenses",
+                                                "leave":  "Leaves"
+                                            },
+                                    "approve":  "Approve",
+                                    "reject":  "Reject",
+                                    "empty":  "No pending requests.",
+                                    "viewReceipt":  "View Receipt",
+                                    "unknownRequester":  "Employee"
+                                }
+              }
 }
