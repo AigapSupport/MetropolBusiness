@@ -17,6 +17,10 @@ public interface ITransfersService
     Task<Result<TransferResponse>> TransferAsync(
         TransferRequest request, string idempotencyKey, CancellationToken cancellationToken = default);
 
+    /// <summary>Kendi kartım için "para al" QR yükünü üretir (resolve-qr'ın karşı yarısı).</summary>
+    Task<Result<ReceiveQrResponse>> GetReceiveQrAsync(
+        Guid cardId, CancellationToken cancellationToken = default);
+
     /// <summary>QR payload'ından alıcı çözümleme (opak token; maskeli alanlar en iyi çaba).</summary>
     Task<Result<ResolveQrResponse>> ResolveQrAsync(
         string? qrPayload, CancellationToken cancellationToken = default);

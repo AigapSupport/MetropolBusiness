@@ -4,6 +4,7 @@ using MetropolBusiness.Application.Tenants;
 using MetropolBusiness.Domain.Entities;
 using MetropolBusiness.Domain.Enums;
 using MetropolBusiness.Infrastructure.Persistence;
+using MetropolBusiness.Infrastructure.Audit;
 using MetropolBusiness.Infrastructure.Tenants;
 using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;
@@ -431,8 +432,10 @@ public sealed class AdminServicesTests : IDisposable
     [Fact]
     public async Task Platform_module_code_must_be_unique()
     {
+        var moduleContext = CreateContext(null, null, isPlatformAdmin: true);
         var service = new PlatformModulesService(
-            CreateContext(null, null, isPlatformAdmin: true),
+            moduleContext,
+            new AuditLogger(moduleContext, new StubTenantContext(null, Guid.NewGuid(), isPlatformAdmin: true)),
             NullLogger<PlatformModulesService>.Instance);
 
         var duplicate = await service.CreateModuleAsync(
@@ -446,6 +449,25 @@ public sealed class AdminServicesTests : IDisposable
         Assert.True(created.Value.IsActive);
     }
 
+    // ── PANELS_SPEC B.8: kritik işlemler audit_logs'a yazılır ────────────────
+
+    [Fact]
+    public async Task Critical_platform_actions_write_audit_rows()
+    {
+        var service = CreatePlatformTenantsService();
+
+        var created = await service.CreateTenantAsync(new TenantCreateRequest(
+            "Denetimli Firma", "AUD", null, null));
+        Assert.True(created.IsSuccess);
+
+        using var verify = CreateContext(null, null, isPlatformAdmin: true);
+        var row = verify.AuditLogs.AsNoTracking().Single(a => a.Action == "tenant_created");
+        Assert.Equal("tenant", row.Entity);
+        Assert.Equal(created.Value.Id.ToString(), row.EntityId);
+        Assert.Equal(created.Value.Id, row.TenantId);
+        Assert.Contains("AUD", row.MetadataJson); // code metadata'da (PII değil)
+        Assert.DoesNotContain("555", row.MetadataJson); // telefon/PII YOK
+    }
     // ── Yardımcılar ──────────────────────────────────────────────────────────
 
     private CompanyUsersService CreateUsersService(Guid tenantId, Guid userId)
@@ -459,10 +481,16 @@ public sealed class AdminServicesTests : IDisposable
         new(CreateContext(tenantId, userId, isPlatformAdmin: false));
 
     /// <summary>Platform admin bağlamı: tenant claim'i YOK (tenant-üstü, ARCHITECTURE §3.2).</summary>
-    private PlatformTenantsService CreatePlatformTenantsService() => new(
-        CreateContext(tenantId: null, userId: Guid.NewGuid(), isPlatformAdmin: true),
-        new FakePanelAuthService(),
-        NullLogger<PlatformTenantsService>.Instance);
+    private PlatformTenantsService CreatePlatformTenantsService()
+    {
+        var context = CreateContext(tenantId: null, userId: Guid.NewGuid(), isPlatformAdmin: true);
+        // Gerçek AuditLogger: kritik işlemler audit_logs'a da yazılır (PANELS_SPEC B.8 testi).
+        var auditLogger = new AuditLogger(
+            context, new StubTenantContext(null, Guid.NewGuid(), isPlatformAdmin: true));
+        return new PlatformTenantsService(
+            context, new FakePanelAuthService(), auditLogger,
+            NullLogger<PlatformTenantsService>.Instance);
+    }
 
     /// <summary>Branding ucu anonimdir: tenant da kullanıcı da yoktur.</summary>
     private TenantBrandingService CreateBrandingService() =>

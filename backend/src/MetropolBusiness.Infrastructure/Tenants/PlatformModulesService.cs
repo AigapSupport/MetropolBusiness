@@ -15,6 +15,7 @@ namespace MetropolBusiness.Infrastructure.Tenants;
 /// </summary>
 public sealed class PlatformModulesService(
     AppDbContext dbContext,
+    IAuditLogger auditLogger,
     ILogger<PlatformModulesService> logger) : IPlatformModulesService
 {
     private static readonly Error ModuleNotFoundError = new(
@@ -59,6 +60,8 @@ public sealed class PlatformModulesService(
 
         logger.LogInformation(
             "Platform aksiyonu: {Action} ModuleCode={ModuleCode}", "module_created", module.Code);
+        await auditLogger.LogAsync("module_created", "module", module.Id.ToString(),
+            new { code = module.Code }, tenantId: null, cancellationToken);
 
         return Result<PlatformModuleDto>.Ok(ToModuleDto(module));
     }
@@ -92,6 +95,8 @@ public sealed class PlatformModulesService(
         logger.LogInformation(
             "Platform aksiyonu: {Action} ModuleCode={ModuleCode} IsActive={IsActive}",
             "module_updated", module.Code, module.IsActive);
+        await auditLogger.LogAsync("module_updated", "module", module.Id.ToString(),
+            new { code = module.Code, isActive = module.IsActive }, tenantId: null, cancellationToken);
 
         return Result<PlatformModuleDto>.Ok(ToModuleDto(module));
     }

@@ -33,6 +33,12 @@ public sealed class MetropolTransferController(ITransfersService transfersServic
             .ToActionResult();
     }
 
+    /// <summary>GET /metropol/transfer/receive-qr — kendi kartım için "para al" QR yükü.</summary>
+    [HttpGet("transfer/receive-qr")]
+    public async Task<IActionResult> GetReceiveQr(
+        [FromQuery] Guid cardId, CancellationToken cancellationToken) =>
+        (await transfersService.GetReceiveQrAsync(cardId, cancellationToken)).ToActionResult();
+
     /// <summary>POST /metropol/transfer/resolve-qr — QR'dan alıcı çözümleme (opak token).</summary>
     [HttpPost("transfer/resolve-qr")]
     public async Task<IActionResult> ResolveQr(

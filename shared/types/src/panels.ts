@@ -111,7 +111,7 @@ export interface AuditLogEntry {
   action: string;
   entity: string;
   entityId: string;
-  /** PII içermez (ARCHITECTURE §4.7). */
-  metadata: Record<string, unknown>;
+  /** PII içermez (ARCHITECTURE §4.7) — backend JSON STRING döner (AuditLogDto.Metadata). */
+  metadata: string;
   createdAt: IsoDateString;
 }

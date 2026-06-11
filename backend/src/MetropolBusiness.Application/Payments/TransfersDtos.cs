@@ -87,6 +87,14 @@ public sealed record ResolveQrResponse(
     string ReceiverMaskedCardNo,
     string ReceiverToken);
 
+/// <summary>
+/// "QR ile para al" (akışın alıcı yarısı): kullanıcının KENDİ kartı için QR yükü.
+/// Yük JSON'dur ({token, name, cardNo} — name/cardNo MASKELİ) ve göndericinin
+/// resolve-qr ucu tarafından aynen çözülür. Token kart sahibinin kendi transfer
+/// alıcı referansıdır; QR göstermek bilinçli bir paylaşımdır (PRD §8.7).
+/// </summary>
+public sealed record ReceiveQrResponse(string QrPayload);
+
 /// <summary>GET /metropol/saved-recipients öğesi: { id, label, maskedCardNo }.</summary>
 public sealed record SavedRecipientDto(
     Guid Id,

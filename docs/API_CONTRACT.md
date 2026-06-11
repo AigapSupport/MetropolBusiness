@@ -333,6 +333,9 @@ Yanıt 200:
 ```
 Hata 422 `METROPOL_ERROR`, 409 `DUPLICATE_OPERATION`.
 
+### GET /metropol/transfer/receive-qr
+`?cardId={uuid}` — kendi kartım için "para al" QR yükü (akışın alıcı yarısı): `{ "qrPayload": "json-string" }`. Yük, gönderenin `resolve-qr` ucunda çözülür (maskeli ad/kart no + opak token içerir).
+
 ### POST /metropol/transfer/resolve-qr
 QR'dan alıcı çözümleme: `{ "qrPayload":"string" }` → `{ "receiverMaskedName":"", "receiverMaskedCardNo":"", "receiverToken":"opaque" }`.
 

@@ -184,6 +184,44 @@ public sealed class TransfersService(
         return Result<TransferResponse>.Ok(receipt);
     }
 
+    public async Task<Result<ReceiveQrResponse>> GetReceiveQrAsync(
+        Guid cardId, CancellationToken cancellationToken = default)
+    {
+        var userId = RequiredUserId;
+
+        // Sahiplik: tenant query filter + kullanıcı koşulu — başkasının kartına QR üretilemez.
+        var card = await dbContext.Cards.AsNoTracking()
+            .Include(c => c.User)
+            .FirstOrDefaultAsync(c => c.Id == cardId && c.UserId == userId, cancellationToken);
+        if (card is null)
+        {
+            return Result<ReceiveQrResponse>.Fail(new Error(
+                ErrorCodes.NotFound, "Kart bulunamadı.", 404));
+        }
+
+        var token = fieldCipher.Decrypt(card.UserAccountTokenEncrypted);
+        if (token is null)
+        {
+            return Result<ReceiveQrResponse>.Fail(new Error(
+                ErrorCodes.InternalError, "Kart kaydı doğrulanamadı.", 500));
+        }
+
+        // ResolveQrAsync'in çözebildiği JSON biçimi: token + MASKELİ ad/kart no —
+        // göstericinin kim olduğu, okutan tarafın onay ekranında maskeli görünür.
+        var holderName = string.IsNullOrWhiteSpace(card.HolderName)
+            ? string.Join(' ', new[] { card.User?.FirstName, card.User?.LastName }
+                .Where(part => !string.IsNullOrWhiteSpace(part)))
+            : card.HolderName;
+        var payload = System.Text.Json.JsonSerializer.Serialize(new
+        {
+            token,
+            name = string.IsNullOrWhiteSpace(holderName) ? UnknownMaskedValue : Masking.MaskName(holderName),
+            cardNo = card.MaskedCardNo,
+        });
+
+        return Result<ReceiveQrResponse>.Ok(new ReceiveQrResponse(payload));
+    }
+
     public Task<Result<ResolveQrResponse>> ResolveQrAsync(
         string? qrPayload, CancellationToken cancellationToken = default)
     {

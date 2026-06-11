@@ -45,6 +45,13 @@ public class AppDbContext(DbContextOptions<AppDbContext> options, ITenantContext
     public DbSet<ConversationParticipant> ConversationParticipants => Set<ConversationParticipant>();
     public DbSet<Message> Messages => Set<Message>();
 
+    /// <summary>
+    /// Denetim kaydı BİLEREK query filter'sızdır: TenantId nullable (platform olayları)
+    /// ve okuma yalnızca PlatformAdmin policy'li uçtan yapılır (PANELS_SPEC B.8);
+    /// hiçbir tenant servisi bu tabloyu sorgulamaz.
+    /// </summary>
+    public DbSet<AuditLog> AuditLogs => Set<AuditLog>();
+
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         base.OnModelCreating(modelBuilder);

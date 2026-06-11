@@ -8,6 +8,7 @@ using MetropolBusiness.Application.Merchants;
 using MetropolBusiness.Application.Payments;
 using MetropolBusiness.Application.Tenants;
 using MetropolBusiness.Application.Users;
+using MetropolBusiness.Infrastructure.Audit;
 using MetropolBusiness.Infrastructure.Auth;
 using MetropolBusiness.Infrastructure.Benefits;
 using MetropolBusiness.Infrastructure.Cache;
@@ -107,6 +108,10 @@ public static class DependencyInjection
             // Sohbet (TODO 2.3 backend) — hub Api'dedir, iş mantığı burada.
             services.AddScoped<IChatService, ChatService>();
             services.AddScoped<IChatMessagingService, ChatMessagingService>();
+
+            // Denetim kaydı (PANELS_SPEC B.8): yazıcı + platform listeleme servisi.
+            services.AddScoped<IAuditLogger, AuditLogger>();
+            services.AddScoped<IAuditQueryService, AuditQueryService>();
         }
 
         // At-rest alan şifrelemesi — şimdilik placeholder; gerçek (DataProtection/KMS)

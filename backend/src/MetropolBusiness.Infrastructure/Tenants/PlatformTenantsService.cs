@@ -20,6 +20,7 @@ namespace MetropolBusiness.Infrastructure.Tenants;
 public sealed class PlatformTenantsService(
     AppDbContext dbContext,
     IPanelAuthService panelAuthService,
+    IAuditLogger auditLogger,
     ILogger<PlatformTenantsService> logger) : IPlatformTenantsService
 {
     private const int DefaultPageSize = 20;
@@ -153,9 +154,11 @@ public sealed class PlatformTenantsService(
         dbContext.Tenants.Add(tenant);
         await dbContext.SaveChangesAsync(cancellationToken);
 
-        // PII'siz yapısal denetim izi (AuditLog entity'si Faz 3'te).
+        // PII'siz denetim: yapısal log + audit_logs kaydı (PANELS_SPEC B.8).
         logger.LogInformation(
             "Platform aksiyonu: {Action} TenantId={TenantId}", "tenant_created", tenant.Id);
+        await auditLogger.LogAsync("tenant_created", "tenant", tenant.Id.ToString(),
+            new { code = tenant.Code }, tenant.Id, cancellationToken);
 
         return Result<PlatformTenantDto>.Ok(ToTenantDto(tenant, userCount: 0));
     }
@@ -184,6 +187,8 @@ public sealed class PlatformTenantsService(
                 logger.LogInformation(
                     "Platform aksiyonu: {Action} TenantId={TenantId} YeniDurum={Status}",
                     "tenant_status_changed", tenant.Id, IdentityEnumMapping.TenantStatusToWire(status.Value));
+                await auditLogger.LogAsync("tenant_status_changed", "tenant", tenant.Id.ToString(),
+                    new { status = IdentityEnumMapping.TenantStatusToWire(status.Value) }, tenant.Id, cancellationToken);
             }
         }
 
@@ -289,6 +294,8 @@ public sealed class PlatformTenantsService(
         logger.LogInformation(
             "Platform aksiyonu: {Action} TenantId={TenantId} UserId={UserId}",
             "tenant_admin_invited", tenantId, admin.Id);
+        await auditLogger.LogAsync("tenant_admin_invited", "tenant_admin", admin.Id.ToString(),
+            metadata: null, tenantId, cancellationToken);
 
         return Result<TenantAdminCreatedDto>.Ok(new TenantAdminCreatedDto(
             admin.Id,
@@ -332,6 +339,8 @@ public sealed class PlatformTenantsService(
         logger.LogInformation(
             "Platform aksiyonu: {Action} TenantId={TenantId} UserId={UserId}",
             "admin_invite_reset", tenantId, userId);
+        await auditLogger.LogAsync("admin_invite_reset", "tenant_admin", userId.ToString(),
+            metadata: null, tenantId, cancellationToken);
 
         return Result<AdminInviteResetDto>.Ok(new AdminInviteResetDto(inviteToken));
     }
