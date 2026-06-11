@@ -4,7 +4,8 @@
                    "back":  "Back",
                    "comingSoon":  "This screen is under construction",
                    "loading":  "Loading...",
-                   "genericError":  "Something went wrong. Please try again."
+                   "genericError":  "Something went wrong. Please try again.",
+                   "cancel":  "Cancel"
                },
     "tabs":  {
                  "home":  "Home",
@@ -285,7 +286,40 @@
     "account":  {
                     "title":  "My Account",
                     "biometricToggle":  "Biometric sign-in",
-                    "biometricUnavailable":  "No usable biometric sensor was found on this device."
+                    "biometricUnavailable":  "No usable biometric sensor was found on this device.",
+                    "menu":  {
+                                 "profile":  "My Profile",
+                                 "businessCard":  "My Business Card",
+                                 "preferences":  "Campaign/Announcement Permissions",
+                                 "language":  "Language",
+                                 "deleteAccount":  "Delete My Account"
+                             },
+                    "profile":  {
+                                    "title":  "My Profile",
+                                    "firstName":  "First name",
+                                    "lastName":  "Last name",
+                                    "email":  "Email",
+                                    "city":  "City",
+                                    "tckn":  "National ID",
+                                    "tcknPlaceholder":  "Enter to change",
+                                    "save":  "Update"
+                                },
+                    "preferences":  {
+                                        "title":  "Campaign/Announcement Permissions",
+                                        "campaign":  "Campaign notifications",
+                                        "announcement":  "Announcement notifications"
+                                    },
+                    "businessCard":  {
+                                         "title":  "My Business Card",
+                                         "copy":  "Copy vCard",
+                                         "qrSoon":  "QR generation arrives with the native build."
+                                     },
+                    "delete":  {
+                                   "title":  "Delete My Account",
+                                   "message":  "Your account will be deactivated and access will end. Continue?",
+                                   "confirm":  "Delete My Account"
+                               },
+                    "logout":  "Log Out"
                 },
     "benefits":  {
                      "subtitle":  "Benefits \u0026 gifts",

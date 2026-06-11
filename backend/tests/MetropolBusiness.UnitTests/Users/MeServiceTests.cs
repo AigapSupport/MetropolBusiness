@@ -208,6 +208,20 @@ public sealed class MeServiceTests : IDisposable
         Assert.Equal("Ankara", result.Value.City);
     }
 
+    [Fact]
+    public async Task DeleteMe_soft_deletes_and_user_disappears_from_queries()
+    {
+        var result = await CreateMeService(TenantA, _userA2).DeleteMeAsync();
+
+        Assert.True(result.IsSuccess);
+        // Soft delete: query filter kullanıcıyı gizler — /me artık 404.
+        var after = await CreateMeService(TenantA, _userA2).GetMeAsync();
+        Assert.False(after.IsSuccess);
+
+        using var verify = CreateContext(TenantA, _userA2);
+        var row = verify.Users.IgnoreQueryFilters().Single(u => u.Id == _userA2);
+        Assert.NotNull(row.DeletedAt); // kayıt SİLİNMEDİ, işaretlendi (CLAUDE.md kural 7)
+    }
     // ── Yardımcılar ──────────────────────────────────────────────────────────
 
     private MeService CreateMeService(Guid tenantId, Guid userId)

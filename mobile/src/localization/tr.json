@@ -4,7 +4,8 @@
                    "back":  "Geri",
                    "comingSoon":  "Bu ekran hazırlanıyor",
                    "loading":  "Yükleniyor...",
-                   "genericError":  "Bir şeyler ters gitti. Lütfen tekrar deneyin."
+                   "genericError":  "Bir şeyler ters gitti. Lütfen tekrar deneyin.",
+                   "cancel":  "Vazgeç"
                },
     "tabs":  {
                  "home":  "Ana Sayfa",
@@ -285,7 +286,40 @@
     "account":  {
                     "title":  "Hesabım",
                     "biometricToggle":  "Biyometrik giriş",
-                    "biometricUnavailable":  "Bu cihazda kullanılabilir bir biyometrik sensör bulunamadı."
+                    "biometricUnavailable":  "Bu cihazda kullanılabilir bir biyometrik sensör bulunamadı.",
+                    "menu":  {
+                                 "profile":  "Profilim",
+                                 "businessCard":  "Kartvizitim",
+                                 "preferences":  "Kampanya/Duyuru İzinleri",
+                                 "language":  "Dil Seçeneği",
+                                 "deleteAccount":  "Hesabımı Sil"
+                             },
+                    "profile":  {
+                                    "title":  "Profilim",
+                                    "firstName":  "Ad",
+                                    "lastName":  "Soyad",
+                                    "email":  "E-posta",
+                                    "city":  "Şehir",
+                                    "tckn":  "T.C. Kimlik No",
+                                    "tcknPlaceholder":  "Değiştirmek için girin",
+                                    "save":  "Güncelle"
+                                },
+                    "preferences":  {
+                                        "title":  "Kampanya/Duyuru İzinleri",
+                                        "campaign":  "Kampanya bildirimleri",
+                                        "announcement":  "Duyuru bildirimleri"
+                                    },
+                    "businessCard":  {
+                                         "title":  "Kartvizitim",
+                                         "copy":  "vCard Kopyala",
+                                         "qrSoon":  "QR oluşturma native kurulumla gelecek."
+                                     },
+                    "delete":  {
+                                   "title":  "Hesabımı Sil",
+                                   "message":  "Hesabınız pasifleştirilecek ve uygulamaya erişiminiz kapanacak. Devam edilsin mi?",
+                                   "confirm":  "Hesabımı Sil"
+                               },
+                    "logout":  "Çıkış Yap"
                 },
     "benefits":  {
                      "subtitle":  "Avantajlar \u0026 hediyeler",

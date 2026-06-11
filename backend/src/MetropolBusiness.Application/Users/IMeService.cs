@@ -35,4 +35,11 @@ public interface IMeService
     /// (distinct); yalnızca aktif modüller listelenir.
     /// </summary>
     Task<Result<MeModulesResponse>> GetModulesAsync(CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// DELETE /me — hesabımı sil (PRD §11.2): SOFT delete (DeletedAt + Status=Passive,
+    /// CLAUDE.md kural 7); kart bağları/talepler denetlenebilirlik için kalır. Silinen
+    /// kullanıcı OTP/refresh akışlarında bulunamaz olur (aktif+silinmemiş filtreleri).
+    /// </summary>
+    Task<Result<bool>> DeleteMeAsync(CancellationToken cancellationToken = default);
 }

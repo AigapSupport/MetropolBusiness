@@ -4,7 +4,8 @@
  * Veriler React Query'den (useHome); pull-to-refresh üç sorguyu birden yeniler.
  * Her bölümün yükleniyor/hata/boş durumu ayrı ele alınır (PRD §16).
  */
-import type { NativeStackScreenProps } from '@react-navigation/native-stack';
+import { useNavigation } from '@react-navigation/native';
+import type { NativeStackNavigationProp, NativeStackScreenProps } from '@react-navigation/native-stack';
 import type { ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
@@ -25,7 +26,7 @@ import type { Announcement, SurveyListItem, Video } from '@shared/home';
 import { Badge } from '@/components/Badge';
 import { BrandLogo } from '@/components/BrandLogo';
 import { useAnnouncements, useSurveys, useVideos } from '@/hooks/useHome';
-import type { HomeStackParamList } from '@/navigation/types';
+import type { HomeStackParamList, RootStackParamList } from '@/navigation/types';
 import { useTheme } from '@/theme/ThemeProvider';
 import { formatDurationMmSs } from '@/utils/duration';
 
@@ -39,6 +40,8 @@ function estimateSurveyMinutes(questionCount: number): number {
 /** Üst bar — hamburger + firma logosu + sohbet/bildirim (prototip HomeHeader). */
 function HomeHeader() {
   const { t } = useTranslation();
+  // Kök stack navigasyonu: Hesabım ekranları MainTabs'in DIŞINDA, RootNavigator'dadır.
+  const rootNavigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
   const { theme } = useTheme();
 
   return (
@@ -48,8 +51,13 @@ function HomeHeader() {
         { backgroundColor: theme.colors.card, borderBottomColor: theme.colors.line2 },
       ]}
     >
-      {/* TODO(Faz 1.x): hamburger menü (drawer) bağlanacak — şimdilik glif placeholder. */}
-      <Pressable hitSlop={8} accessibilityRole="button" accessibilityLabel={t('home.menu')}>
+      {/* Hamburger → Hesabım (PRD §11.1; kök stack'teki AccountMenu). */}
+      <Pressable
+        hitSlop={8}
+        accessibilityRole="button"
+        accessibilityLabel={t('home.menu')}
+        onPress={() => rootNavigation.navigate('AccountMenu')}
+      >
         <Text style={{ fontSize: theme.fontSize.xl, color: theme.colors.ink }}>☰</Text>
       </Pressable>
       <BrandLogo size={34} />

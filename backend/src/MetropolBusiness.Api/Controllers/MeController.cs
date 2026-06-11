@@ -44,6 +44,11 @@ public sealed class MeController(IMeService meService) : ControllerBase
         PreferencesDto request, CancellationToken cancellationToken) =>
         (await meService.UpdatePreferencesAsync(request, cancellationToken)).ToActionResult();
 
+    /// <summary>DELETE /me — hesabımı sil (soft delete; istemci başarıda oturumu kapatır).</summary>
+    [HttpDelete]
+    public async Task<IActionResult> DeleteMe(CancellationToken cancellationToken) =>
+        (await meService.DeleteMeAsync(cancellationToken)).ToNoContentResult();
+
     /// <summary>GET /me/modules — segmentlerden gelen yetkili modüllerin birleşimi.</summary>
     [HttpGet("modules")]
     public async Task<IActionResult> GetModules(CancellationToken cancellationToken) =>

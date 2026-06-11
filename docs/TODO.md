@@ -171,7 +171,13 @@
 - [x] Web: firma masraf/izin genel görünüm — `RequestsPage` (sekmeli izin/masraf listeleri, durum filtresi, sayfalama, fiş linki). Onaylayıcı atama ilk sürümde YOK (PRD §17.6 tek aşamalı; approver rolü + modül yetkisi yeter)
 
 ### 2.5 Hesabım/Profil tamamlama
-- [ ] Mobile: profil düzenle/güncelle, kartvizit (vCard QR), güvenlik (PIN/biyometrik/ResetPin), kart kullanım ayarları (DeactivateCard), izinler, dil, hesap silme
+- [x] Mobile: profil düzenle/güncelle — `ProfileEditScreen` (PUT /me + PUT /me/tckn, yanıt maskeli); avatar/kamera native build sonrası [~]
+- [x] Mobile: kartvizit — `BusinessCardScreen`: dijital kart + vCard metni + kopyala; **QR üretimi [~]** (react-native-svg native build ile)
+- [~] Mobile: güvenlik — biyometrik toggle [x] (Hesabım'da); **PIN/ResetPin ve Kart Kullanım Ayarları (DeactivateCard) [~]**: IVR uçları `IMetropolApiClient`'ta hazır, bizim API proxy uçları + ekranları sonraki tur
+- [x] Mobile: izinler — `PreferencesScreen` (GET/PUT /me/preferences toggle'ları)
+- [x] Mobile: dil — `LanguageScreen` (TR/EN runtime; kalıcılık Faz sonrası)
+- [x] Mobile: hesap silme — `DELETE /me` backend ucu eklendi (soft delete + test); menüde onaylı silme → logout
+- [x] Hesabım erişimi: Ana Sayfa hamburger → kök stack `AccountMenu` (PRD §11.1)
 
 ---
 

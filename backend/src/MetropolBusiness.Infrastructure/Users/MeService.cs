@@ -2,6 +2,7 @@ using System.Text.Json;
 using MetropolBusiness.Application.Common;
 using MetropolBusiness.Application.Users;
 using MetropolBusiness.Domain.Entities;
+using MetropolBusiness.Domain.Enums;
 using MetropolBusiness.Infrastructure.Persistence;
 using MetropolBusiness.Infrastructure.Tenants;
 using Microsoft.EntityFrameworkCore;
@@ -157,6 +158,23 @@ public sealed class MeService(
             .ToList();
 
         return Result<MeModulesResponse>.Ok(new MeModulesResponse(modules));
+    }
+
+    public async Task<Result<bool>> DeleteMeAsync(CancellationToken cancellationToken = default)
+    {
+        var user = await LoadMeAsync(track: true, cancellationToken);
+        if (user is null)
+        {
+            return Result<bool>.Fail(new Error(ErrorCodes.NotFound, "Kullanıcı bulunamadı.", 404));
+        }
+
+        // SOFT delete (CLAUDE.md kural 7): kayıt kalır, sorgu filtreleri gizler;
+        // OTP/refresh akışları aktif+silinmemiş aradığından oturum yenilenemez.
+        user.Status = EntityStatus.Passive;
+        user.DeletedAt = DateTimeOffset.UtcNow;
+        await dbContext.SaveChangesAsync(cancellationToken);
+
+        return Result<bool>.Ok(true);
     }
 
     /// <summary>

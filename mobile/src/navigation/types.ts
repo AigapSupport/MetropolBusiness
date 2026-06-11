@@ -12,6 +12,16 @@ export type AuthStackParamList = {
   CompleteProfile: undefined;
 };
 
+/** Kök stack — tab'lar + hamburger menüden açılan Hesabım ekranları (PRD §11). */
+export type RootStackParamList = {
+  Main: undefined;
+  AccountMenu: undefined;
+  ProfileEdit: undefined;
+  Preferences: undefined;
+  BusinessCard: undefined;
+  Language: undefined;
+};
+
 /** Alt tab bar — 5 sekme (PRD §4). Metropol ortadaki ana sekmedir. */
 export type MainTabParamList = {
   Home: undefined;
