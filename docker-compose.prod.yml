@@ -65,7 +65,9 @@ services:
       Jwt__Issuer: metropolbusiness
       Jwt__Audience: metropolbusiness-clients
       Jwt__SigningKey: ${JWT_SIGNING_KEY}
-      Auth__DevFixedOtp: ""            # üretimde sabit OTP YOK
+      # Üretimde BOŞ kalmalı. SMS sağlayıcı bağlanana kadar dev ortamında
+      # .env.production'da DEV_FIXED_OTP=123456 ile mobil giriş açılır.
+      Auth__DevFixedOtp: ${DEV_FIXED_OTP:-}
       Metropol__AuthBaseUrl: ${METROPOL_AUTH_URL}
       Metropol__ApiBaseUrl: ${METROPOL_API_URL}
       Metropol__AccessKey: ${METROPOL_ACCESS_KEY}
