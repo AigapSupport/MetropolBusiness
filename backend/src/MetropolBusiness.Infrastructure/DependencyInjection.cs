@@ -19,6 +19,7 @@ using MetropolBusiness.Infrastructure.Users;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.DependencyInjection.Extensions;
 
 namespace MetropolBusiness.Infrastructure;
 
@@ -32,6 +33,10 @@ public static class DependencyInjection
     public static IServiceCollection AddInfrastructure(
         this IServiceCollection services, IConfiguration configuration)
     {
+        // Zaman soyutlaması: içerik yayım zamanı karşılaştırmaları testte sabitlenebilsin diye
+        // TimeProvider DI'dan gelir (Metropol entegrasyonu da TryAdd ile aynı kaydı yapar).
+        services.TryAddSingleton(TimeProvider.System);
+
         services.AddOptions<RedisOptions>().BindConfiguration(RedisOptions.SectionName);
         services.AddOptions<JwtOptions>().BindConfiguration(JwtOptions.SectionName);
         services.AddOptions<AuthOptions>().BindConfiguration(AuthOptions.SectionName);

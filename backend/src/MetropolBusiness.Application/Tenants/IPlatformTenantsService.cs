@@ -29,4 +29,13 @@ public interface IPlatformTenantsService
     /// </summary>
     Task<Result<TenantAdminCreatedDto>> InviteAdminAsync(
         Guid tenantId, TenantAdminInviteRequest request, CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// POST /platform/tenants/{tenantId}/admins/{userId}/reset-invite — şifre sıfırlama
+    /// daveti (e-posta altyapısı gelene dek admin eliyle): o tenant'ın company_admin'i için
+    /// YENİ davet token'ı üretir; kullanıcı o tenant'ın company_admin'i değilse 404.
+    /// Mevcut şifre korunur — set-password yapılana kadar eski şifre çalışır.
+    /// </summary>
+    Task<Result<AdminInviteResetDto>> ResetAdminInviteAsync(
+        Guid tenantId, Guid userId, CancellationToken cancellationToken = default);
 }

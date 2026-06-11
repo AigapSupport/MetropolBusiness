@@ -504,6 +504,51 @@ public sealed class ContentServiceTests : IDisposable
         Assert.DoesNotContain(otherTenantList.Value.Items, s => s.Id == created.Value.Id);
     }
 
+    // ── İleri tarihli yayım (PANELS_SPEC A.7): zamanı gelmeyen duyuru görünmez ─
+
+    [Fact]
+    public async Task Future_dated_announcement_is_hidden_from_home()
+    {
+        var now = DateTimeOffset.UtcNow;
+        var admin = CreateAdminService(TenantA, _userA2);
+
+        var created = await admin.CreateAnnouncementAsync(new AnnouncementUpsertRequest(
+            "Yarının Duyurusu", "Henüz erken.", null, "published", null, now.AddHours(6)));
+        Assert.True(created.IsSuccess);
+        Assert.Equal(now.AddHours(6), created.Value.PublishedAt); // verilen tarih aynen yazılır
+
+        // Sabit saat = şimdi: yayım zamanı gelmediği için listede GÖRÜNMEZ.
+        var service = CreateContentService(TenantA, _userA1, new FixedTimeProvider(now));
+        var list = await service.GetAnnouncementsAsync(1, 20);
+        Assert.DoesNotContain(list.Value.Items, a => a.Id == created.Value.Id);
+
+        // Detay ucundan da sızmaz (NOT_FOUND).
+        var detail = await service.GetAnnouncementAsync(created.Value.Id);
+        Assert.False(detail.IsSuccess);
+        Assert.Equal(ErrorCodes.NotFound, detail.Error!.Code);
+    }
+
+    [Fact]
+    public async Task Future_dated_announcement_becomes_visible_when_time_arrives()
+    {
+        var now = DateTimeOffset.UtcNow;
+        var admin = CreateAdminService(TenantA, _userA2);
+
+        var created = await admin.CreateAnnouncementAsync(new AnnouncementUpsertRequest(
+            "Zamanı Gelen Duyuru", "Artık görünür.", null, "published", null, now.AddHours(6)));
+        Assert.True(created.IsSuccess);
+
+        // Sabit saat yayım zamanının SONRASINA alınır: duyuru liste + detayda görünür olur.
+        var after = CreateContentService(
+            TenantA, _userA1, new FixedTimeProvider(now.AddHours(7)));
+        var list = await after.GetAnnouncementsAsync(1, 20);
+        Assert.Contains(list.Value.Items, a => a.Id == created.Value.Id);
+
+        var detail = await after.GetAnnouncementAsync(created.Value.Id);
+        Assert.True(detail.IsSuccess);
+        Assert.Equal(now.AddHours(6), detail.Value.PublishedAt);
+    }
+
     [Fact]
     public async Task Admin_survey_with_invalid_question_type_is_rejected()
     {
@@ -526,16 +571,21 @@ public sealed class ContentServiceTests : IDisposable
             .Select(a => new SurveyAnswerDto(a.QuestionId, JsonSerializer.SerializeToElement(a.Value)))
             .ToList());
 
-    private ContentService CreateContentService(Guid tenantId, Guid userId)
+    /// <summary>timeProvider verilmezse sistem saati; ileri tarihli yayım testleri sabitler.</summary>
+    private ContentService CreateContentService(
+        Guid tenantId, Guid userId, TimeProvider? timeProvider = null)
     {
         var tenantContext = new StubTenantContext(tenantId, userId);
-        return new ContentService(CreateContext(tenantId, userId), tenantContext);
+        return new ContentService(
+            CreateContext(tenantId, userId), tenantContext, timeProvider ?? TimeProvider.System);
     }
 
-    private ContentAdminService CreateAdminService(Guid tenantId, Guid userId)
+    private ContentAdminService CreateAdminService(
+        Guid tenantId, Guid userId, TimeProvider? timeProvider = null)
     {
         var tenantContext = new StubTenantContext(tenantId, userId);
-        return new ContentAdminService(CreateContext(tenantId, userId), tenantContext);
+        return new ContentAdminService(
+            CreateContext(tenantId, userId), tenantContext, timeProvider ?? TimeProvider.System);
     }
 
     private AppDbContext CreateContext(Guid? tenantId, Guid? userId)
@@ -556,5 +606,11 @@ public sealed class ContentServiceTests : IDisposable
         public bool IsPlatformAdmin => false;
         public Guid RequiredTenantId => TenantId
             ?? throw new InvalidOperationException("Tenant bağlamı yok.");
+    }
+
+    /// <summary>Sabit saat — ileri tarihli yayım görünürlüğü deterministik test edilir.</summary>
+    private sealed class FixedTimeProvider(DateTimeOffset now) : TimeProvider
+    {
+        public override DateTimeOffset GetUtcNow() => now;
     }
 }

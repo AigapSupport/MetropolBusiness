@@ -1,15 +1,45 @@
 /**
  * PANELS_SPEC §A.6 sonuçlar (sadeleştirilmiş) — soru bazında yanıt sayım tablosu
- * + basit yüzde bar div'leri (grafik kütüphanesi yok).
- * GET /admin/company/surveys/{id}/results.
+ * + basit yüzde bar div'leri (grafik kütüphanesi yok). Açık metin (text) sorular
+ * bar yerine yanıt listesi olarak gösterilir; "CSV İndir" mevcut veriden
+ * istemci tarafında üretilir. GET /admin/company/surveys/{id}/results.
  */
 
 import { useQuery } from '@tanstack/react-query';
 import { Link, useParams } from 'react-router-dom';
+import type { SurveyQuestionType } from '@shared/home';
+import type { SurveyResultsDto } from '@shared/content-admin';
 import { adminApi } from '../../api/adminApi';
 import PageHeader from '../../components/ui/PageHeader';
+import { secondaryButtonStyle } from '../../components/ui/fields';
 import { colors, radii } from '../../theme/tokens';
 import { apiErrorMessage } from '../../utils/apiErrorMessage';
+import { downloadCsv } from '../../utils/csv';
+
+const QUESTION_TYPE_LABELS: Record<SurveyQuestionType, string> = {
+  single: 'Tekli seçim',
+  multi: 'Çoklu seçim',
+  text: 'Açık metin',
+  rating: 'Derecelendirme (1-5)',
+};
+
+/** Sonuçları satır bazında CSV'ye döker: soru no/metin/tip + yanıt değeri + sayı. */
+function downloadResultsCsv(results: SurveyResultsDto): void {
+  const rows: string[][] = [['Soru No', 'Soru', 'Soru Tipi', 'Yanıt', 'Sayı']];
+  for (const question of results.questions) {
+    const entries = Object.entries(question.distribution).sort((a, b) => b[1] - a[1]);
+    for (const [value, count] of entries) {
+      rows.push([
+        String(question.order),
+        question.text,
+        QUESTION_TYPE_LABELS[question.type],
+        value,
+        String(count),
+      ]);
+    }
+  }
+  downloadCsv(`anket-sonuclari-${results.surveyId}.csv`, rows);
+}
 
 export default function SurveyResultsPage() {
   const { surveyId } = useParams<{ surveyId: string }>();
@@ -45,9 +75,18 @@ export default function SurveyResultsPage() {
         title={`Sonuçlar: ${results.title}`}
         description={`Toplam katılım: ${results.responseCount}`}
         action={
-          <Link to="/content/surveys" style={{ color: colors.primary, fontSize: 14 }}>
-            ← Listeye dön
-          </Link>
+          <span style={{ display: 'inline-flex', alignItems: 'center', gap: 12 }}>
+            <button
+              type="button"
+              style={secondaryButtonStyle}
+              onClick={() => downloadResultsCsv(results)}
+            >
+              CSV İndir
+            </button>
+            <Link to="/content/surveys" style={{ color: colors.primary, fontSize: 14 }}>
+              ← Listeye dön
+            </Link>
+          </span>
         }
       />
 
@@ -76,6 +115,29 @@ export default function SurveyResultsPage() {
                 <p style={{ margin: 0, fontSize: 13, color: colors.textSecondary }}>
                   Henüz yanıt yok.
                 </p>
+              ) : question.type === 'text' ? (
+                /* Açık metin: dağılım bar'ı yerine yanıt listesi (PANELS_SPEC §A.6). */
+                <ul style={{ margin: 0, padding: 0, listStyle: 'none' }}>
+                  {entries.map(([value, count]) => (
+                    <li
+                      key={value}
+                      style={{
+                        padding: '8px 10px',
+                        fontSize: 13,
+                        color: colors.textPrimary,
+                        backgroundColor: colors.contentBg,
+                        borderRadius: radii.md,
+                        marginBottom: 6,
+                        overflowWrap: 'anywhere',
+                      }}
+                    >
+                      {value}
+                      {count > 1 && (
+                        <span style={{ color: colors.textSecondary }}> ({count} kez)</span>
+                      )}
+                    </li>
+                  ))}
+                </ul>
               ) : (
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
                   {entries.map(([value, count]) => {

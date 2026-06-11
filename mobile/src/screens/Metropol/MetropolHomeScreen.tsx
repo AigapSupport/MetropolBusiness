@@ -361,16 +361,24 @@ export function MetropolHomeScreen({ navigation }: Props) {
                   {item === 'add' ? (
                     <AddCardTile onPress={() => navigation.navigate('AddCardNumber')} />
                   ) : (
-                    <CardVisual
-                      holderName={item.holderName}
-                      maskedCardNo={item.maskedCardNo}
-                      index={index}
-                      onRefresh={handleRefreshBalance}
-                      onCopy={
-                        clipboardModule !== null ? () => handleCopy(item.maskedCardNo) : undefined
-                      }
-                      onDelete={() => handleDelete(item)}
-                    />
+                    /* karta dokunma → kart detayı (PRD §8.3); içteki yenile/kopyala/sil
+                       ikonları kendi Pressable'larıyla çalışmaya devam eder */
+                    <Pressable
+                      onPress={() => navigation.navigate('CardDetail', { cardId: item.id })}
+                      accessibilityRole="button"
+                      accessibilityLabel={t('metropol.card.openDetail')}
+                    >
+                      <CardVisual
+                        holderName={item.holderName}
+                        maskedCardNo={item.maskedCardNo}
+                        index={index}
+                        onRefresh={handleRefreshBalance}
+                        onCopy={
+                          clipboardModule !== null ? () => handleCopy(item.maskedCardNo) : undefined
+                        }
+                        onDelete={() => handleDelete(item)}
+                      />
+                    </Pressable>
                   )}
                 </View>
               )}

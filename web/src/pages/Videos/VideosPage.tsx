@@ -25,6 +25,7 @@ import {
 } from '../../components/ui/fields';
 import { colors, radii } from '../../theme/tokens';
 import { apiErrorMessage } from '../../utils/apiErrorMessage';
+import { downloadCsv } from '../../utils/csv';
 import { formatDate, formatDuration, formatFullName } from '../../utils/format';
 
 interface VideoFormState {
@@ -217,6 +218,23 @@ export default function VideosPage() {
 
   const report = reportQuery.data;
 
+  /** İzlenme raporunu mevcut veriden istemci tarafında CSV'ye döker. */
+  const handleDownloadReportCsv = () => {
+    if (report === undefined) {
+      return;
+    }
+    const rows: string[][] = [['Kullanıcı', 'İzledi', 'İlerleme (sn)', 'İzlenme Tarihi']];
+    for (const item of report.items) {
+      rows.push([
+        formatFullName(item.firstName, item.lastName),
+        item.watched ? 'Evet' : 'Hayır',
+        String(item.progressSeconds),
+        item.watchedAt ?? '',
+      ]);
+    }
+    downloadCsv(`video-izlenme-${report.videoId}.csv`, rows);
+  };
+
   return (
     <section>
       <PageHeader
@@ -266,13 +284,26 @@ export default function VideosPage() {
               İzlenme Raporu
               {report !== undefined && ` — ${report.title} (${report.watchedCount} izleyen)`}
             </h2>
-            <button
-              type="button"
-              style={secondaryButtonStyle}
-              onClick={() => setReportVideoId(null)}
-            >
-              Kapat
-            </button>
+            <span style={{ display: 'inline-flex', gap: 8 }}>
+              <button
+                type="button"
+                style={{
+                  ...secondaryButtonStyle,
+                  color: report === undefined ? colors.textSecondary : colors.textPrimary,
+                }}
+                disabled={report === undefined}
+                onClick={handleDownloadReportCsv}
+              >
+                CSV İndir
+              </button>
+              <button
+                type="button"
+                style={secondaryButtonStyle}
+                onClick={() => setReportVideoId(null)}
+              >
+                Kapat
+              </button>
+            </span>
           </div>
 
           {reportQuery.isPending && (

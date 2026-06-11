@@ -13,12 +13,15 @@ public sealed record TenantBrandingDto(
 /// <summary>
 /// Platform tenant satırı (GET /platform/tenants). PII YOK: kullanıcı listesi/telefon
 /// yerine yalnızca userCount sayısı döner (API_CONTRACT §13 kuralı).
+/// HasMetropolConsumer: MetropolConsumerRef dolu mu — yalnızca VARLIK bilgisi (bool);
+/// sır referans değerinin kendisi yanıta ASLA çıkmaz (CLAUDE.md kural 2).
 /// </summary>
 public sealed record PlatformTenantDto(
     Guid Id,
     string Name,
     string Code,
     string Status,
+    bool HasMetropolConsumer,
     TenantBrandingDto Branding,
     int UserCount,
     DateTimeOffset CreatedAt);
@@ -67,6 +70,14 @@ public sealed record TenantAdminCreatedDto(
     string? LastName,
     string Role,
     string InviteToken);
+
+/// <summary>
+/// Şifre sıfırlama daveti yanıtı (POST /platform/tenants/{tenantId}/admins/{userId}/reset-invite).
+/// Token YALNIZCA bu yanıtta döner (POST /auth/set-password, 72 saat, tek kullanımlık) ve
+/// LOG'A YAZILMAZ (CLAUDE.md kural 4). Mevcut şifre korunur: kullanıcı set-password yapana
+/// kadar eski şifresiyle giriş yapmaya devam eder.
+/// </summary>
+public sealed record AdminInviteResetDto(string InviteToken);
 
 /// <summary>Modül tanımı (GET /platform/modules): { code, name, isActive }.</summary>
 public sealed record PlatformModuleDto(Guid Id, string Code, string Name, bool IsActive);

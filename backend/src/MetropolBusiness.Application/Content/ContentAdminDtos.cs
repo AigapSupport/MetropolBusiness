@@ -69,13 +69,18 @@ public sealed record AdminAnnouncementDto(
     DateTimeOffset? PublishedAt,
     IReadOnlyList<Guid> SegmentIds);
 
-/// <summary>Duyuru oluştur/güncelle (+ segment hedefleme). SegmentIds null/boş = herkese.</summary>
+/// <summary>
+/// Duyuru oluştur/güncelle (+ segment hedefleme). SegmentIds null/boş = herkese.
+/// PublishedAt (PANELS_SPEC A.7 ileri tarihli yayım): yalnız status="published" iken anlamlı;
+/// null = hemen yayımla. Home uçları publishedAt &lt;= şimdi olana kadar duyuruyu göstermez.
+/// </summary>
 public sealed record AnnouncementUpsertRequest(
     string Title,
     string Body,
     string? CoverUrl,
     string Status,
-    List<Guid>? SegmentIds);
+    List<Guid>? SegmentIds,
+    DateTimeOffset? PublishedAt = null);
 
 // ── Videolar ────────────────────────────────────────────────────────────────
 

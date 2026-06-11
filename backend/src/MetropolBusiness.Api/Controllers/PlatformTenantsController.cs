@@ -49,4 +49,15 @@ public sealed class PlatformTenantsController(IPlatformTenantsService platformTe
         Guid id, TenantAdminInviteRequest request, CancellationToken cancellationToken) =>
         (await platformTenantsService.InviteAdminAsync(id, request, cancellationToken))
             .ToActionResult(StatusCodes.Status201Created);
+
+    /// <summary>
+    /// POST /platform/tenants/{tenantId}/admins/{userId}/reset-invite — şifre sıfırlama daveti:
+    /// YENİ davet token'ı döner ({ inviteToken }); kullanıcı o tenant'ın company_admin'i
+    /// değilse 404. Mevcut şifre set-password yapılana kadar geçerli kalır.
+    /// </summary>
+    [HttpPost("tenants/{tenantId:guid}/admins/{userId:guid}/reset-invite")]
+    public async Task<IActionResult> ResetAdminInvite(
+        Guid tenantId, Guid userId, CancellationToken cancellationToken) =>
+        (await platformTenantsService.ResetAdminInviteAsync(tenantId, userId, cancellationToken))
+            .ToActionResult();
 }

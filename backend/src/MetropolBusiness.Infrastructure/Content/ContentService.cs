@@ -15,7 +15,10 @@ namespace MetropolBusiness.Infrastructure.Content;
 /// Tenant izolasyonu AppDbContext global query filter'larıyla sağlanır:
 /// duyuruda (TenantId == null || TenantId == aktif tenant), anket/videoda kendi tenant.
 /// </summary>
-public sealed class ContentService(AppDbContext dbContext, ITenantContext tenantContext) : IContentService
+public sealed class ContentService(
+    AppDbContext dbContext,
+    ITenantContext tenantContext,
+    TimeProvider timeProvider) : IContentService
 {
     /// <summary>AnswersJson sözleşme ile aynı biçimde (camelCase) saklanır.</summary>
     internal static readonly JsonSerializerOptions JsonWeb = new(JsonSerializerDefaults.Web);
@@ -57,9 +60,15 @@ public sealed class ContentService(AppDbContext dbContext, ITenantContext tenant
 
         var query = await BuildVisibleAnnouncementsQueryAsync(cancellationToken);
 
-        // Sıralama+sayfalama bellekte: DateTimeOffset ORDER BY SQLite'ta (test) desteklenmez,
-        // duyuru kümesi tenant başına küçüktür (Faz 3 performans turunda gözden geçirilir).
-        var visible = await query.ToListAsync(cancellationToken);
+        // Sıralama+sayfalama+yayım zamanı filtresi bellekte: DateTimeOffset ORDER BY ve
+        // karşılaştırma SQLite'ta (test) desteklenmez, duyuru kümesi tenant başına küçüktür
+        // (Faz 3 performans turunda gözden geçirilir).
+        // İleri tarihli yayım (PANELS_SPEC A.7): YALNIZCA publishedAt <= şimdi olanlar döner;
+        // zaman TimeProvider'dan okunur (test edilebilirlik — sabit saatle doğrulanır).
+        var now = timeProvider.GetUtcNow();
+        var visible = (await query.ToListAsync(cancellationToken))
+            .Where(a => a.PublishedAt is not null && a.PublishedAt <= now)
+            .ToList();
         var items = visible
             .OrderByDescending(a => a.PublishedAt)
             .Skip((page - 1) * pageSize)
@@ -77,9 +86,16 @@ public sealed class ContentService(AppDbContext dbContext, ITenantContext tenant
         var query = await BuildVisibleAnnouncementsQueryAsync(cancellationToken);
         var announcement = await query.FirstOrDefaultAsync(a => a.Id == id, cancellationToken);
 
-        return announcement is null
-            ? Result<AnnouncementDto>.Fail(AnnouncementNotFoundError)
-            : Result<AnnouncementDto>.Ok(ToAnnouncementDto(announcement));
+        // İleri tarihli yayım: zamanı gelmemiş duyuru detay ucundan da SIZMAZ (NOT_FOUND).
+        // Karşılaştırma bellekte — DateTimeOffset karşılaştırması SQLite'ta (test) çevrilemez.
+        if (announcement is null
+            || announcement.PublishedAt is null
+            || announcement.PublishedAt > timeProvider.GetUtcNow())
+        {
+            return Result<AnnouncementDto>.Fail(AnnouncementNotFoundError);
+        }
+
+        return Result<AnnouncementDto>.Ok(ToAnnouncementDto(announcement));
     }
 
     /// <summary>
@@ -359,7 +375,7 @@ public sealed class ContentService(AppDbContext dbContext, ITenantContext tenant
         {
             // completed=true → izlendi işareti + damga; bir kez izlendiyse geri alınmaz.
             watch.Watched = true;
-            watch.WatchedAt = DateTimeOffset.UtcNow;
+            watch.WatchedAt = timeProvider.GetUtcNow();
         }
 
         await dbContext.SaveChangesAsync(cancellationToken);

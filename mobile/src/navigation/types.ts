@@ -83,6 +83,8 @@ export interface TransferReceiptParams {
  */
 export type MetropolStackParamList = {
   MetropolHome: undefined;
+  /** Kart detayı — 2 sekme: Bakiyeler / İşlemler (PRD §8.3). */
+  CardDetail: { cardId: string };
   // Kart ekleme — 3 adım (PRD §8.2)
   AddCardNumber: undefined;
   AddCardOtp: { cardNo: string; phone: string; validationGuid: string };

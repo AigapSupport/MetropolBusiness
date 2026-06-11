@@ -69,6 +69,31 @@ export default function SurveysPage() {
     onError: (error) => showToast('error', apiErrorMessage(error)),
   });
 
+  // ── Kopyala ──────────────────────────────────────────────────────────────
+  // Detay çekilir, "(Kopya)" ekiyle TASLAK olarak yeni anket oluşturulur.
+  const copyMutation = useMutation({
+    mutationFn: async (id: string) => {
+      const detail = await adminApi.getSurvey(id);
+      const request: SurveyUpsertRequest = {
+        title: `${detail.title} (Kopya)`,
+        singleResponse: detail.singleResponse,
+        status: 'draft',
+        questions: detail.questions.map((question) => ({
+          order: question.order,
+          type: question.type,
+          text: question.text,
+          options: question.options ?? null,
+        })),
+      };
+      return adminApi.createSurvey(request);
+    },
+    onSuccess: () => {
+      invalidate();
+      showToast('success', 'Anket taslak olarak kopyalandı.');
+    },
+    onError: (error) => showToast('error', apiErrorMessage(error)),
+  });
+
   // ── Sil ──────────────────────────────────────────────────────────────────
   const [deleteTarget, setDeleteTarget] = useState<AdminSurveyListItemDto | null>(null);
 
@@ -111,7 +136,7 @@ export default function SurveysPage() {
     {
       key: 'actions',
       header: '',
-      width: 300,
+      width: 360,
       render: (survey) => (
         <span style={{ display: 'inline-flex', gap: 4, whiteSpace: 'nowrap' }}>
           <button
@@ -140,6 +165,14 @@ export default function SurveysPage() {
             onClick={() => navigate(`/content/surveys/${survey.id}/results`)}
           >
             Sonuçlar
+          </button>
+          <button
+            type="button"
+            style={linkButtonStyle}
+            disabled={copyMutation.isPending}
+            onClick={() => copyMutation.mutate(survey.id)}
+          >
+            Kopyala
           </button>
           <button
             type="button"

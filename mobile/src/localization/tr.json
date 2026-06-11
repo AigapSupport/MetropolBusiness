@@ -92,7 +92,20 @@
       "refresh": "Bakiyeyi yenile",
       "copy": "Kart numarasını kopyala",
       "copied": "Kopyalandı",
-      "delete": "Kartı sil"
+      "delete": "Kartı sil",
+      "openDetail": "Kart detayını aç"
+    },
+    "cardDetail": {
+      "title": "Kart Detayı",
+      "tab_balances": "Bakiyeler",
+      "tab_actions": "İşlemler",
+      "staleNotice": "Son güncelleme: {{date}}",
+      "usageSettings": "Kart Kullanım Ayarları",
+      "usageSettingsSub": "Limit, online ödeme, NFC",
+      "phaseBadge": "Faz 2.5",
+      "deleteTitle": "Kartı Sil",
+      "deleteSub": "Bu kartı hesabınızdan kaldır",
+      "notFound": "Kart bulunamadı."
     },
     "balance": {
       "total": "TOPLAM",

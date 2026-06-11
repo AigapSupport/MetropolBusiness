@@ -3,9 +3,11 @@
  * (GET /admin/company/users ?q&segmentId&status&page), arama + durum/segment filtresi,
  * ekle/düzenle FormDrawer (ad/soyad/telefon/e-posta/rol/segmentler), pasifleştirme
  * onay diyaloğu, segment atama (PUT .../users/{id}/segments).
+ * Konfor: CSV ile toplu içe aktarma (önizleme + satır bazlı sonuç raporu) ve
+ * satır seçimiyle toplu segment atama (PUT segments sırayla, sonuç özeti).
  */
 
-import { useState, type FormEvent } from 'react';
+import { useRef, useState, type ChangeEvent, type FormEvent } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import type {
   CompanyUserCreateRequest,
@@ -32,6 +34,7 @@ import {
 } from '../../components/ui/fields';
 import { colors, radii } from '../../theme/tokens';
 import { apiErrorMessage } from '../../utils/apiErrorMessage';
+import { parseCsv } from '../../utils/csv';
 import { formatFullName } from '../../utils/format';
 
 const PAGE_SIZE = 20;
@@ -59,6 +62,102 @@ const EMPTY_FORM: UserFormState = {
   role: 'enduser',
   segmentIds: [],
 };
+
+// ── CSV toplu içe aktarma (PANELS_SPEC §A.3 "Toplu İçe Aktar (CSV)") ─────────
+
+/** CSV önizleme/sonuç satırı — `error` istemci doğrulaması, `serverError` POST sonucu. */
+interface ImportRow {
+  /** Dosyadaki satır numarası (başlık 1. satır olduğundan 2'den başlar). */
+  line: number;
+  firstName: string;
+  lastName: string;
+  phone: string;
+  email: string;
+  role: string;
+  /** İstemci doğrulama hatası — null ise satır aktarılabilir. */
+  error: string | null;
+  /** POST create başarılı oldu. */
+  imported: boolean;
+  /** POST create hata mesajı (örn. telefon çakışması VALIDATION_ERROR). */
+  serverError: string | null;
+}
+
+interface ParsedImport {
+  rows: ImportRow[];
+  /** Dosya düzeyi hata (boş dosya, eksik başlık) — varsa rows boştur. */
+  fileError: string | null;
+}
+
+/**
+ * CSV metnini içe aktarma satırlarına çevirir. Başlık satırı zorunlu:
+ * firstName,lastName,phone[,email,role] — büyük/küçük harf toleranslı,
+ * sütun sırası serbest (ada göre eşlenir). Ayraç , veya ; olabilir (parseCsv).
+ */
+function parseImportRows(text: string): ParsedImport {
+  const csv = parseCsv(text);
+  if (csv.length === 0) {
+    return { rows: [], fileError: 'Dosya boş.' };
+  }
+
+  const header = csv[0].map((cell) => cell.trim().toLowerCase());
+  const columnIndex = (name: string) => header.indexOf(name.toLowerCase());
+  const firstNameIdx = columnIndex('firstName');
+  const lastNameIdx = columnIndex('lastName');
+  const phoneIdx = columnIndex('phone');
+  const emailIdx = columnIndex('email');
+  const roleIdx = columnIndex('role');
+
+  if (firstNameIdx === -1 || lastNameIdx === -1 || phoneIdx === -1) {
+    return {
+      rows: [],
+      fileError:
+        'Başlık satırı eksik veya hatalı; beklenen sütunlar: firstName, lastName, phone, email, role.',
+    };
+  }
+  if (csv.length === 1) {
+    return { rows: [], fileError: 'Dosyada veri satırı yok.' };
+  }
+
+  const seenPhones = new Set<string>();
+  const rows = csv.slice(1).map((cells, index): ImportRow => {
+    const at = (idx: number): string =>
+      idx === -1 || idx >= cells.length ? '' : cells[idx].trim();
+    const firstName = at(firstNameIdx);
+    const lastName = at(lastNameIdx);
+    const phone = at(phoneIdx);
+    const email = at(emailIdx);
+    const roleRaw = at(roleIdx).toLowerCase();
+    const role = roleRaw === '' ? 'enduser' : roleRaw;
+
+    let error: string | null = null;
+    if (firstName === '' || lastName === '') {
+      error = 'Ad ve soyad zorunludur.';
+    } else if (phone === '') {
+      error = 'Telefon zorunludur.';
+    } else if (role !== 'enduser' && role !== 'approver') {
+      error = "Geçersiz rol; 'enduser' veya 'approver' olmalıdır.";
+    } else if (seenPhones.has(phone)) {
+      error = 'Telefon dosya içinde mükerrer.';
+    }
+    if (phone !== '') {
+      seenPhones.add(phone);
+    }
+
+    return {
+      line: index + 2,
+      firstName,
+      lastName,
+      phone,
+      email,
+      role,
+      error,
+      imported: false,
+      serverError: null,
+    };
+  });
+
+  return { rows, fileError: null };
+}
 
 export default function UsersPage() {
   const queryClient = useQueryClient();
@@ -239,8 +338,220 @@ export default function UsersPage() {
     onError: (error) => showToast('error', apiErrorMessage(error)),
   });
 
+  // ── CSV toplu içe aktarma ────────────────────────────────────────────────
+  const importFileInputRef = useRef<HTMLInputElement>(null);
+  const [importOpen, setImportOpen] = useState(false);
+  const [importRows, setImportRows] = useState<ImportRow[]>([]);
+  const [importFileError, setImportFileError] = useState<string | null>(null);
+  const [importing, setImporting] = useState(false);
+  const [importSummary, setImportSummary] = useState<{
+    success: number;
+    failed: number;
+  } | null>(null);
+
+  const importableCount = importRows.filter(
+    (row) => row.error === null && !row.imported,
+  ).length;
+  const importInvalidCount = importRows.filter((row) => row.error !== null).length;
+
+  const handleImportFile = async (file: File) => {
+    setImportSummary(null);
+    try {
+      const text = await file.text();
+      const parsed = parseImportRows(text);
+      setImportRows(parsed.rows);
+      setImportFileError(parsed.fileError);
+    } catch {
+      setImportRows([]);
+      setImportFileError('Dosya okunamadı.');
+    }
+    setImportOpen(true);
+  };
+
+  const handleImportInputChange = (event: ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    // Aynı dosya tekrar seçilebilsin diye input sıfırlanır.
+    event.target.value = '';
+    if (file !== undefined) {
+      void handleImportFile(file);
+    }
+  };
+
+  /** Geçerli satırları sırayla POST eder; satır bazlı sonuç tabloya işlenir. */
+  const runImport = async () => {
+    setImporting(true);
+    let success = 0;
+    let failed = 0;
+    const next: ImportRow[] = [];
+    for (const row of importRows) {
+      if (row.error !== null || row.imported) {
+        next.push(row);
+        continue;
+      }
+      try {
+        await adminApi.createUser({
+          phone: row.phone,
+          firstName: row.firstName,
+          lastName: row.lastName,
+          email: row.email === '' ? null : row.email,
+          role: row.role,
+          segmentIds: null,
+        });
+        next.push({ ...row, imported: true, serverError: null });
+        success += 1;
+      } catch (error) {
+        // Örn. telefon çakışması VALIDATION_ERROR — mesaj satırda gösterilir.
+        next.push({ ...row, serverError: apiErrorMessage(error) });
+        failed += 1;
+      }
+    }
+    setImportRows(next);
+    setImportSummary({ success, failed });
+    setImporting(false);
+    invalidateUsers();
+    showToast(
+      failed === 0 ? 'success' : 'error',
+      `İçe aktarma tamamlandı: ${success} başarılı, ${failed} hatalı.`,
+    );
+  };
+
+  const handleImportSubmit = () => {
+    if (importing) {
+      return;
+    }
+    // Aktarma bittiyse veya aktarılabilir satır yoksa birincil düğme kapatır.
+    if (importSummary !== null || importableCount === 0) {
+      setImportOpen(false);
+      return;
+    }
+    void runImport();
+  };
+
+  const importColumns: Array<DataTableColumn<ImportRow>> = [
+    { key: 'line', header: 'Satır', width: 56, render: (row) => row.line },
+    { key: 'firstName', header: 'Ad', render: (row) => row.firstName },
+    { key: 'lastName', header: 'Soyad', render: (row) => row.lastName },
+    { key: 'phone', header: 'Telefon', render: (row) => row.phone },
+    { key: 'email', header: 'E-posta', render: (row) => (row.email === '' ? '—' : row.email) },
+    { key: 'role', header: 'Rol', render: (row) => ROLE_LABELS[row.role] ?? row.role },
+    {
+      key: 'status',
+      header: 'Durum',
+      render: (row) =>
+        row.error !== null ? (
+          <span style={{ color: colors.danger, fontSize: 12 }}>Geçersiz: {row.error}</span>
+        ) : row.imported ? (
+          <span style={{ color: colors.success, fontSize: 12 }}>Eklendi</span>
+        ) : row.serverError !== null ? (
+          <span style={{ color: colors.danger, fontSize: 12 }}>Hata: {row.serverError}</span>
+        ) : (
+          <span style={{ color: colors.textSecondary, fontSize: 12 }}>Hazır</span>
+        ),
+    },
+  ];
+
+  // ── Toplu segment atama (satır seçimi) ───────────────────────────────────
+  const [selectedUsers, setSelectedUsers] = useState<Record<string, CompanyUserDto>>({});
+  const selectedCount = Object.keys(selectedUsers).length;
+
+  const pageUsers = usersQuery.data?.items ?? [];
+  const allPageSelected =
+    pageUsers.length > 0 && pageUsers.every((user) => selectedUsers[user.id] !== undefined);
+
+  const toggleUserSelected = (user: CompanyUserDto, checked: boolean) => {
+    setSelectedUsers((current) => {
+      const next = { ...current };
+      if (checked) {
+        next[user.id] = user;
+      } else {
+        delete next[user.id];
+      }
+      return next;
+    });
+  };
+
+  const togglePageSelection = (checked: boolean) => {
+    setSelectedUsers((current) => {
+      const next = { ...current };
+      for (const user of pageUsers) {
+        if (checked) {
+          next[user.id] = user;
+        } else {
+          delete next[user.id];
+        }
+      }
+      return next;
+    });
+  };
+
+  const [bulkOpen, setBulkOpen] = useState(false);
+  const [bulkSegmentIds, setBulkSegmentIds] = useState<string[]>([]);
+  const [bulkError, setBulkError] = useState<string | null>(null);
+  const [bulkAssigning, setBulkAssigning] = useState(false);
+
+  const toggleBulkSegment = (segmentId: string, checked: boolean) => {
+    setBulkSegmentIds((current) =>
+      checked ? [...current, segmentId] : current.filter((id) => id !== segmentId),
+    );
+  };
+
+  /**
+   * Seçili kullanıcılara sırayla PUT .../segments atar. Atama birleşimdir:
+   * kullanıcının mevcut segmentleri korunur, seçilen segmentler eklenir.
+   */
+  const runBulkAssign = async () => {
+    if (bulkSegmentIds.length === 0) {
+      setBulkError('En az bir segment seçin.');
+      return;
+    }
+    setBulkError(null);
+    setBulkAssigning(true);
+    let success = 0;
+    let failed = 0;
+    let firstErrorMessage = '';
+    const remaining: Record<string, CompanyUserDto> = {};
+    for (const user of Object.values(selectedUsers)) {
+      const merged = Array.from(
+        new Set([...user.segments.map((segment) => segment.id), ...bulkSegmentIds]),
+      );
+      try {
+        await adminApi.setUserSegments(user.id, { segmentIds: merged });
+        success += 1;
+      } catch (error) {
+        failed += 1;
+        if (firstErrorMessage === '') {
+          firstErrorMessage = apiErrorMessage(error);
+        }
+        remaining[user.id] = user; // hatalı kullanıcılar seçili bırakılır
+      }
+    }
+    setBulkAssigning(false);
+    setBulkOpen(false);
+    setSelectedUsers(remaining);
+    invalidateUsers();
+    showToast(
+      failed === 0 ? 'success' : 'error',
+      failed === 0
+        ? `${success} kullanıcıya segment atandı.`
+        : `Segment atama: ${success} başarılı, ${failed} hatalı (${firstErrorMessage}). Hatalı kullanıcılar seçili bırakıldı.`,
+    );
+  };
+
   // ── Tablo ────────────────────────────────────────────────────────────────
   const columns: Array<DataTableColumn<CompanyUserDto>> = [
+    {
+      key: 'select',
+      header: '',
+      width: 36,
+      render: (user) => (
+        <input
+          type="checkbox"
+          aria-label={`${formatFullName(user.firstName, user.lastName)} seç`}
+          checked={selectedUsers[user.id] !== undefined}
+          onChange={(event) => toggleUserSelected(user, event.target.checked)}
+        />
+      ),
+    },
     {
       key: 'name',
       header: 'Ad Soyad',
@@ -331,9 +642,25 @@ export default function UsersPage() {
         title="Kullanıcılar"
         description="Firma kullanıcılarını yönetin; segment atayın, pasifleştirin."
         action={
-          <button type="button" style={primaryButtonStyle} onClick={openCreate}>
-            + Kullanıcı Ekle
-          </button>
+          <span style={{ display: 'inline-flex', gap: 8 }}>
+            <input
+              ref={importFileInputRef}
+              type="file"
+              accept=".csv,text/csv"
+              style={{ display: 'none' }}
+              onChange={handleImportInputChange}
+            />
+            <button
+              type="button"
+              style={secondaryButtonStyle}
+              onClick={() => importFileInputRef.current?.click()}
+            >
+              Toplu İçe Aktar (CSV)
+            </button>
+            <button type="button" style={primaryButtonStyle} onClick={openCreate}>
+              + Kullanıcı Ekle
+            </button>
+          </span>
         }
       />
 
@@ -408,6 +735,57 @@ export default function UsersPage() {
           {apiErrorMessage(usersQuery.error)}
         </p>
       )}
+
+      {/* Toplu işlem çubuğu: sayfa seçimi + seçililere segment atama. */}
+      <div
+        style={{
+          display: 'flex',
+          alignItems: 'center',
+          flexWrap: 'wrap',
+          gap: 12,
+          marginBottom: 8,
+        }}
+      >
+        <label
+          style={{
+            display: 'inline-flex',
+            alignItems: 'center',
+            gap: 6,
+            fontSize: 13,
+            color: colors.textPrimary,
+          }}
+        >
+          <input
+            type="checkbox"
+            checked={allPageSelected}
+            onChange={(event) => togglePageSelection(event.target.checked)}
+          />
+          Sayfadakileri seç
+        </label>
+        <span style={{ fontSize: 13, color: colors.textSecondary }}>
+          Seçili: {selectedCount}
+        </span>
+        <button
+          type="button"
+          style={{
+            ...secondaryButtonStyle,
+            color: selectedCount === 0 ? colors.textSecondary : colors.textPrimary,
+          }}
+          disabled={selectedCount === 0}
+          onClick={() => {
+            setBulkSegmentIds([]);
+            setBulkError(null);
+            setBulkOpen(true);
+          }}
+        >
+          Seçililere Segment Ata
+        </button>
+        {selectedCount > 0 && (
+          <button type="button" style={linkButtonStyle} onClick={() => setSelectedUsers({})}>
+            Seçimi temizle
+          </button>
+        )}
+      </div>
 
       <DataTable
         columns={columns}
@@ -534,6 +912,99 @@ export default function UsersPage() {
         }}
         onCancel={() => setDeactivateTarget(null)}
       />
+
+      {/* CSV içe aktarma: önizleme + satır bazlı sonuç raporu. */}
+      <FormDrawer
+        open={importOpen}
+        title="Toplu İçe Aktar (CSV)"
+        width={720}
+        onClose={() => {
+          if (!importing) {
+            setImportOpen(false);
+          }
+        }}
+        onSubmit={handleImportSubmit}
+        saving={importing}
+        submitLabel={
+          importSummary !== null || importableCount === 0
+            ? 'Kapat'
+            : `Aktar (${importableCount})`
+        }
+      >
+        {importFileError !== null ? (
+          <p style={{ margin: 0, fontSize: 13, color: colors.danger }}>{importFileError}</p>
+        ) : (
+          <>
+            <p style={{ margin: '0 0 12px', fontSize: 13, color: colors.textSecondary }}>
+              Beklenen başlık satırı: firstName, lastName, phone, email, role (virgül veya
+              noktalı virgül ayraçlı). Aktarılabilir satır: {importableCount} /{' '}
+              {importRows.length}
+              {importInvalidCount > 0 && ` — ${importInvalidCount} geçersiz satır atlanacak`}
+              .
+            </p>
+            {importSummary !== null && (
+              <p
+                style={{
+                  margin: '0 0 12px',
+                  fontSize: 13,
+                  color: importSummary.failed === 0 ? colors.success : colors.danger,
+                }}
+              >
+                Aktarma tamamlandı: {importSummary.success} başarılı,{' '}
+                {importSummary.failed} hatalı
+                {importInvalidCount > 0 && `, ${importInvalidCount} geçersiz satır atlandı`}.
+                Hata mesajları satırların Durum sütunundadır.
+              </p>
+            )}
+            <DataTable
+              columns={importColumns}
+              rows={importRows}
+              rowKey={(row) => String(row.line)}
+              emptyText="Dosyada veri satırı yok."
+            />
+          </>
+        )}
+      </FormDrawer>
+
+      {/* Toplu segment atama: seçili kullanıcılara sırayla PUT .../segments. */}
+      <FormDrawer
+        open={bulkOpen}
+        title="Seçililere Segment Ata"
+        onClose={() => {
+          if (!bulkAssigning) {
+            setBulkOpen(false);
+          }
+        }}
+        onSubmit={() => {
+          void runBulkAssign();
+        }}
+        saving={bulkAssigning}
+        submitLabel={`Ata (${selectedCount} kullanıcı)`}
+      >
+        <FormField
+          label="Eklenecek segmentler"
+          hint={
+            segments.length === 0
+              ? 'Henüz segment yok; Segmentler sayfasından oluşturun.'
+              : 'Seçilen segmentler kullanıcıların mevcut segmentlerine eklenir (mevcutlar korunur).'
+          }
+        >
+          <div>
+            {segments.map((segment) => (
+              <CheckboxField
+                key={segment.id}
+                label={segment.name}
+                checked={bulkSegmentIds.includes(segment.id)}
+                onChange={(checked) => toggleBulkSegment(segment.id, checked)}
+              />
+            ))}
+          </div>
+        </FormField>
+
+        {bulkError !== null && (
+          <p style={{ margin: 0, fontSize: 13, color: colors.danger }}>{bulkError}</p>
+        )}
+      </FormDrawer>
     </section>
   );
 }

@@ -205,10 +205,8 @@ export function TenantsPage() {
                   </td>
                   <td style={tdStyle}>{tenant.userCount}</td>
                   <td style={tdStyle}>
-                    {/* Backend PlatformTenantDto alanı henüz dönmüyor → bilinmiyor gösterilir. */}
-                    {tenant.hasMetropolConsumer === undefined ? (
-                      <Badge tone="neutral">—</Badge>
-                    ) : tenant.hasMetropolConsumer ? (
+                    {/* Backend yalnız VARLIK bilgisini döner; sır consumer ref değeri gelmez. */}
+                    {tenant.hasMetropolConsumer ? (
                       <Badge tone="success">Var</Badge>
                     ) : (
                       <Badge tone="warning">Yok</Badge>

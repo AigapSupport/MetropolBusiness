@@ -154,7 +154,7 @@ Kullanıcının segmentine göre yetkili modüller:
 ## 3. HOME (ANA SAYFA)
 
 ### GET /home/announcements
-Firma + global. `?page&pageSize`.
+Firma + global. `?page&pageSize`. Yalnız yayım zamanı gelmiş duyurular döner (`publishedAt <= şimdi` — ileri tarihli yayım, PANELS_SPEC A.7); detay ucu da aynı kuralı uygular (erken erişim 404).
 ```json
 { "items": [ { "id": "uuid", "title": "", "body": "", "coverUrl": "", "source": "company|platform", "publishedAt": "" } ], "page":1, "pageSize":20, "total":5 }
 ```
@@ -452,7 +452,7 @@ Onay bekleyenler (yetki: approver/segment).
 
 ### İçerik
 - Anketler: `GET/POST/PUT/DELETE /admin/company/surveys` (+ sorular), `GET /admin/company/surveys/{id}/results`
-- Duyurular: `GET/POST/PUT/DELETE /admin/company/announcements` (+ segment hedefleme)
+- Duyurular: `GET/POST/PUT/DELETE /admin/company/announcements` (+ segment hedefleme); ileri tarihli yayım: istek gövdesinde `publishedAt` (yalnız `status="published"` iken anlamlı; null/gönderilmez = hemen) — home uçları yalnız `publishedAt <= şimdi` olanları listeler (PANELS_SPEC A.7)
 - Videolar: `GET/POST/PUT/DELETE /admin/company/videos`, `GET /admin/company/videos/{id}/watch-report`
 
 ### Talepler (genel görünüm)
@@ -470,6 +470,8 @@ Onay bekleyenler (yetki: approver/segment).
 - `POST /platform/tenants` (oluştur) `{ "name","code","metropolConsumerId","branding":{...} }`
 - `PUT /platform/tenants/{id}` · durum değişimi
 - `POST /platform/tenants/{id}/admins` (firma admin daveti) — yanıt `inviteToken` içerir (şifre belirleme: `POST /auth/set-password`, 72 saat, tek kullanımlık; yalnız bu yanıtta döner, log'lanmaz)
+- `POST /platform/tenants/{tenantId}/admins/{userId}/reset-invite` (şifre sıfırlama daveti, admin eliyle) — kullanıcı o tenant'ın `company_admin`'i değilse 404; yanıt `{ "inviteToken": "..." }` (YENİ davet, 72 saat, tek kullanımlık; yalnız bu yanıtta döner, log'lanmaz). Mevcut şifre korunur: kullanıcı `set-password` yapana kadar eski şifresiyle girebilir. Self-servis "şifremi unuttum" e-posta (SMTP) altyapısı gelince eklenecek.
+- Tenant yanıtlarında `hasMetropolConsumer` (bool): Metropol consumer eşleşmesi VAR/YOK bilgisi — sır referans değerinin kendisi asla dönmez.
 
 ### Modül tanımları
 - `GET/POST/PUT /platform/modules` `{ "code","name","isActive" }`

@@ -275,6 +275,36 @@ public sealed class AdminServicesTests : IDisposable
             || name.Contains("Email", StringComparison.OrdinalIgnoreCase));
     }
 
+    // ── hasMetropolConsumer: yalnız VARLIK bilgisi, sır değeri yanıta çıkmaz ─
+
+    [Fact]
+    public async Task Tenant_responses_expose_consumer_match_flag_without_secret_value()
+    {
+        var service = CreatePlatformTenantsService();
+
+        var created = await service.CreateTenantAsync(new TenantCreateRequest(
+            "Eşleşmeli Firma", "ESL", "secret-ref-esl", null));
+        Assert.True(created.IsSuccess);
+        Assert.True(created.Value.HasMetropolConsumer); // ref dolu → true
+
+        // Liste yanıtında da dolu; ref'i olmayan tenant false döner.
+        var list = await service.GetTenantsAsync(q: null, status: null, 1, 50);
+        Assert.True(list.Value.Items.Single(t => t.Id == created.Value.Id).HasMetropolConsumer);
+        Assert.False(list.Value.Items.Single(t => t.Id == TenantA).HasMetropolConsumer);
+
+        // Tekil (PUT) yanıtında da dolu; ref temizlenince false'a döner.
+        var cleared = await service.UpdateTenantAsync(
+            created.Value.Id, new TenantUpdateRequest(null, "", null, null));
+        Assert.True(cleared.IsSuccess);
+        Assert.False(cleared.Value.HasMetropolConsumer);
+
+        // SIR DEĞERİ ASLA YANITA KONMAZ (CLAUDE.md kural 2): DTO'da consumer'a dair
+        // tek alan bool bayraktır — string ref alanı olmadığı tip üzerinde doğrulanır.
+        var consumerProperty = Assert.Single(typeof(PlatformTenantDto).GetProperties()
+            .Where(p => p.Name.Contains("Consumer", StringComparison.OrdinalIgnoreCase)));
+        Assert.Equal(typeof(bool), consumerProperty.PropertyType);
+    }
+
     // ── (g) Tenant code benzersiz ────────────────────────────────────────────
 
     [Fact]
@@ -331,6 +361,46 @@ public sealed class AdminServicesTests : IDisposable
             "", "Adsız", null, null));
         Assert.False(noPhone.IsSuccess);
         Assert.Equal(ErrorCodes.ValidationError, noPhone.Error!.Code);
+    }
+
+    // ── Şifre sıfırlama daveti: mutlu yol + tenant izolasyonu ────────────────
+
+    [Fact]
+    public async Task Reset_invite_returns_new_token_for_company_admin()
+    {
+        var service = CreatePlatformTenantsService();
+
+        var result = await service.ResetAdminInviteAsync(TenantA, _adminA);
+
+        Assert.True(result.IsSuccess);
+        // Token yalnızca yanıtta döner (admin UI gösterir); log'a yazılmaz.
+        Assert.Equal(FakePanelAuthService.Token, result.Value.InviteToken);
+
+        // Mevcut şifre korunur: davet yalnız YENİ şifre belirleme yolu açar; kullanıcı
+        // kaydına dokunulmaz (set-password yapılana kadar eski şifre çalışır).
+        // IgnoreQueryFilters: test platform admin bağlamında (tenant claim'i yok) doğrular.
+        using var verify = CreateContext(null, null, isPlatformAdmin: true);
+        var admin = verify.Users.IgnoreQueryFilters().AsNoTracking().Single(u => u.Id == _adminA);
+        Assert.Equal(UserRole.CompanyAdmin, admin.Role);
+        Assert.Null(admin.PasswordHash); // kayıt değişmedi (seed'deki haliyle)
+    }
+
+    [Fact]
+    public async Task Reset_invite_for_other_tenants_admin_returns_not_found()
+    {
+        var service = CreatePlatformTenantsService();
+
+        // _adminA, TENANT A'nın company_admin'i — tenant B üzerinden istek 404 döner
+        // (varlık bilgisi sızdırılmaz; CLAUDE.md kural 1).
+        var crossTenant = await service.ResetAdminInviteAsync(TenantB, _adminA);
+        Assert.False(crossTenant.IsSuccess);
+        Assert.Equal(ErrorCodes.NotFound, crossTenant.Error!.Code);
+        Assert.Equal(404, crossTenant.Error!.HttpStatus);
+
+        // company_admin olmayan kullanıcı için de 404 (rol koşulu — enduser davet alamaz).
+        var endUser = await service.ResetAdminInviteAsync(TenantA, _userA2);
+        Assert.False(endUser.IsSuccess);
+        Assert.Equal(ErrorCodes.NotFound, endUser.Error!.Code);
     }
 
     // ── (i) Branding ucu: yalnız aktif tenant; pasif/bilinmeyen 404 ──────────

@@ -4,18 +4,9 @@ import type { IsoDateString } from './common';
 import type { TenantBranding, UserRole } from './me';
 
 // ── §12 Web — firma admin ───────────────────────────────
-
-export interface CompanyUser {
-  id: string;
-  firstName: string;
-  lastName: string;
-  phone: string;
-  email: string | null;
-  role: UserRole;
-  status: 'active' | 'passive';
-  segments: Array<{ id: string; name: string }>;
-  lastLoginAt: IsoDateString | null;
-}
+// Not: kullanıcı/segment GÖRÜNÜM tipleri content-admin.ts'tedir (CompanyUserDto,
+// CompanySegmentDto — backend'in fiilen döndürdüğü şekil); buradaki bayat
+// CompanyUser/Segment taslakları kaldırıldı (hiçbir istemci import etmiyordu).
 
 export interface CreateCompanyUserRequest {
   firstName: string;
@@ -24,14 +15,6 @@ export interface CreateCompanyUserRequest {
   email?: string;
   role: Extract<UserRole, 'enduser' | 'approver'>;
   segmentIds?: string[];
-}
-
-export interface Segment {
-  id: string;
-  name: string;
-  userCount: number;
-  moduleCount: number;
-  createdAt: IsoDateString;
 }
 
 export interface SetSegmentModulesRequest {
@@ -53,11 +36,10 @@ export interface Tenant {
   status: TenantStatus;
   userCount: number;
   /**
-   * Metropol consumer eşleşmesi var mı. NOT: backend PlatformTenantDto bu alanı henüz
-   * DÖNDÜRMÜYOR (secret referansı yanıta çıkarılmaz; PlatformAdminDtos.cs). Alan backend'e
-   * eklenene kadar istemcide `undefined` gelir — UI "bilinmiyor" gösterir.
+   * Metropol consumer eşleşmesi var mı — backend yalnız VARLIK bilgisini döner
+   * (PlatformTenantDto.HasMetropolConsumer); sır referans değeri yanıta asla çıkmaz.
    */
-  hasMetropolConsumer?: boolean;
+  hasMetropolConsumer: boolean;
   /** Dikkat: backend marka alanlarını null dönebilir (TenantBrandingDto tüm alanlar nullable). */
   branding: TenantBranding;
   createdAt: IsoDateString;

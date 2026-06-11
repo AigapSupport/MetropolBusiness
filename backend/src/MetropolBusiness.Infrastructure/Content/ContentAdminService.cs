@@ -15,7 +15,10 @@ namespace MetropolBusiness.Infrastructure.Content;
 /// firma admin yalnızca KENDİ tenant'ının duyurularını yönetebileceği için tüm duyuru
 /// sorgularına TenantId == RequiredTenantId koşulu AÇIKÇA eklenir (CLAUDE.md kural 1).
 /// </summary>
-public sealed class ContentAdminService(AppDbContext dbContext, ITenantContext tenantContext)
+public sealed class ContentAdminService(
+    AppDbContext dbContext,
+    ITenantContext tenantContext,
+    TimeProvider timeProvider)
     : IContentAdminService
 {
     private static readonly Error SurveyNotFoundError = new(
@@ -92,7 +95,7 @@ public sealed class ContentAdminService(AppDbContext dbContext, ITenantContext t
             Title = request.Title.Trim(),
             SingleResponse = request.SingleResponse,
             Status = status,
-            PublishedAt = status == ContentStatus.Published ? DateTimeOffset.UtcNow : null,
+            PublishedAt = status == ContentStatus.Published ? timeProvider.GetUtcNow() : null,
             Questions = questions,
         };
 
@@ -124,8 +127,8 @@ public sealed class ContentAdminService(AppDbContext dbContext, ITenantContext t
         survey.SingleResponse = request.SingleResponse;
         survey.Status = status;
         survey.PublishedAt = status == ContentStatus.Published
-            ? survey.PublishedAt ?? DateTimeOffset.UtcNow // yayımla: ilk yayın anı korunur
-            : null;                                       // yayımdan kaldır
+            ? survey.PublishedAt ?? timeProvider.GetUtcNow() // yayımla: ilk yayın anı korunur
+            : null;                                          // yayımdan kaldır
 
         // Sorular komple değiştirilir (basit CRUD; soru bazlı diff Faz 3 raporlamada düşünülür).
         dbContext.SurveyQuestions.RemoveRange(survey.Questions);
@@ -340,7 +343,11 @@ public sealed class ContentAdminService(AppDbContext dbContext, ITenantContext t
             Body = request.Body,
             CoverUrl = request.CoverUrl,
             Status = status,
-            PublishedAt = status == ContentStatus.Published ? DateTimeOffset.UtcNow : null,
+            // İleri tarihli yayım (PANELS_SPEC A.7): verilen tarih yazılır; null = hemen.
+            // Home uçları publishedAt <= şimdi olana kadar duyuruyu göstermez.
+            PublishedAt = status == ContentStatus.Published
+                ? request.PublishedAt ?? timeProvider.GetUtcNow()
+                : null,
             Segments = segmentIds
                 .Select(segmentId => new AnnouncementSegment { SegmentId = segmentId })
                 .ToList(),
@@ -375,8 +382,10 @@ public sealed class ContentAdminService(AppDbContext dbContext, ITenantContext t
         announcement.Body = request.Body;
         announcement.CoverUrl = request.CoverUrl;
         announcement.Status = status;
+        // İleri tarihli yayım: istekte tarih verildiyse o yazılır (yeniden zamanlama dahil);
+        // verilmediyse ilk yayın anı korunur, hiç yoksa şimdi. Yayımdan kaldırınca sıfırlanır.
         announcement.PublishedAt = status == ContentStatus.Published
-            ? announcement.PublishedAt ?? DateTimeOffset.UtcNow
+            ? request.PublishedAt ?? announcement.PublishedAt ?? timeProvider.GetUtcNow()
             : null;
 
         // Segment hedefleri komple değiştirilir.

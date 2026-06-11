@@ -90,6 +90,11 @@ export interface AnnouncementUpsertRequest {
   coverUrl: string | null;
   status: ContentStatus;
   segmentIds: string[] | null;
+  /**
+   * İleri tarihli yayım (PANELS_SPEC A.7): yalnız status="published" iken anlamlı;
+   * null/gönderilmez = hemen yayımla. Home uçları publishedAt <= şimdi olana dek göstermez.
+   */
+  publishedAt?: IsoDateString | null;
 }
 
 // ── Videolar (ContentAdminDtos.cs) ──────────────────────────────────────────
@@ -134,8 +139,8 @@ export interface VideoWatchReportDto {
 }
 
 // ── Kullanıcılar & segmentler (CompanyAdminDtos.cs) ─────────────────────────
-// Not: panels.ts'teki CompanyUser/Segment görünümleri sözleşme taslağına göredir;
-// backend'in fiilen döndürdüğü şekil aşağıdaki Dto tipleridir (alan adları birebir).
+// Backend'in fiilen döndürdüğü şekil aşağıdaki Dto tipleridir (alan adları birebir);
+// panels.ts'teki bayat CompanyUser/Segment taslakları kaldırıldı.
 
 /** Kullanıcının bağlı olduğu segment özeti (CompanyUserSegmentDto). */
 export interface CompanyUserSegmentDto {

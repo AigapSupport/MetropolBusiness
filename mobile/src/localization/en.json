@@ -92,7 +92,20 @@
       "refresh": "Refresh balance",
       "copy": "Copy card number",
       "copied": "Copied",
-      "delete": "Delete card"
+      "delete": "Delete card",
+      "openDetail": "Open card details"
+    },
+    "cardDetail": {
+      "title": "Card Details",
+      "tab_balances": "Balances",
+      "tab_actions": "Actions",
+      "staleNotice": "Last updated: {{date}}",
+      "usageSettings": "Card Usage Settings",
+      "usageSettingsSub": "Limit, online payment, NFC",
+      "phaseBadge": "Phase 2.5",
+      "deleteTitle": "Delete Card",
+      "deleteSub": "Remove this card from your account",
+      "notFound": "Card not found."
     },
     "balance": {
       "total": "TOTAL",

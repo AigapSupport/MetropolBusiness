@@ -28,6 +28,9 @@ public sealed class PlatformTenantsService(
     private static readonly Error TenantNotFoundError = new(
         ErrorCodes.NotFound, "Firma bulunamadı.", 404);
 
+    private static readonly Error AdminNotFoundError = new(
+        ErrorCodes.NotFound, "Firma yöneticisi bulunamadı.", 404);
+
     private static readonly Error CodeTakenError = new(
         ErrorCodes.ValidationError,
         "Bu firma kodu zaten kullanılıyor.",
@@ -296,11 +299,51 @@ public sealed class PlatformTenantsService(
             inviteToken));
     }
 
+    public async Task<Result<AdminInviteResetDto>> ResetAdminInviteAsync(
+        Guid tenantId, Guid userId, CancellationToken cancellationToken = default)
+    {
+        // IgnoreQueryFilters GEREKÇESİ (ARCHITECTURE §3.3): platform admin bağlamında
+        // tenant_id claim'i yok; hedef tenant koşulu ELLE uygulanır. Kullanıcı o tenant'ın
+        // company_admin'i değilse (başka tenant'ın admin'i / başka rol / silinmiş) ayrım
+        // yapılmadan 404 döner — varlık bilgisi sızdırılmaz (CLAUDE.md kural 1).
+        var isCompanyAdmin = await dbContext.Users
+            .IgnoreQueryFilters()
+            .AsNoTracking()
+            .AnyAsync(
+                u => u.Id == userId
+                    && u.TenantId == tenantId
+                    && u.Role == UserRole.CompanyAdmin
+                    && u.DeletedAt == null,
+                cancellationToken);
+        if (!isCompanyAdmin)
+        {
+            return Result<AdminInviteResetDto>.Fail(AdminNotFoundError);
+        }
+
+        // YENİ davet token'ı (set-password, 72 saat, tek kullanımlık). MEVCUT ŞİFRE KORUNUR:
+        // davet yalnızca yeni şifre belirleme yolunu açar; kullanıcı set-password yapana kadar
+        // eski şifresiyle giriş yapmaya devam eder. E-posta altyapısı yok — token'ı admin UI
+        // gösterir; TOKEN LOG'A YAZILMAZ (CLAUDE.md kural 4). Self-servis "şifremi unuttum"
+        // SMTP gelince (docs/TODO.md).
+        var inviteToken = await panelAuthService.CreateInviteAsync(userId, cancellationToken);
+
+        // PII'siz denetim izi: telefon/e-posta/ad/token YOK, yalnız id + aksiyon
+        // (AuditLog entity'si Faz 3'te).
+        logger.LogInformation(
+            "Platform aksiyonu: {Action} TenantId={TenantId} UserId={UserId}",
+            "admin_invite_reset", tenantId, userId);
+
+        return Result<AdminInviteResetDto>.Ok(new AdminInviteResetDto(inviteToken));
+    }
+
     private static PlatformTenantDto ToTenantDto(Tenant tenant, int userCount) => new(
         tenant.Id,
         tenant.Name,
         tenant.Code,
         IdentityEnumMapping.TenantStatusToWire(tenant.Status),
+        // Yalnızca VARLIK bilgisi (bool): sır referansının kendisi yanıta ASLA konmaz
+        // (CLAUDE.md kural 2).
+        !string.IsNullOrWhiteSpace(tenant.MetropolConsumerRef),
         new TenantBrandingDto(
             tenant.BrandLogoUrl,
             tenant.BrandPrimaryColor,
