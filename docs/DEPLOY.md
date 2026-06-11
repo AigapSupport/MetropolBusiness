@@ -29,7 +29,7 @@ Mobil uygulama doğrudan `https://api.DOMAIN/api/v1` + `wss://api.DOMAIN/hubs/ch
 ## İlk kurulum (sunucuda)
 
 ```bash
-ssh aigap@<VPS_IP>
+ssh aigap@213.136.89.144
 # private ise URL'e fine-grained PAT (Contents: Read) göm
 git clone https://github.com/AigapSupport/MetropolBusiness.git ~/metropolbusiness
 cd ~/metropolbusiness
@@ -66,7 +66,7 @@ SignalR websocket Traefik'ten sorunsuz geçer (ek ayar gerekmez).
 ## Güncelleme
 
 ```bash
-ssh aigap@<VPS_IP> 'cd ~/metropolbusiness && ./deploy.sh'
+ssh aigap@213.136.89.144 'cd ~/metropolbusiness && ./deploy.sh'
 ```
 
 ## Mobil yapılandırma
