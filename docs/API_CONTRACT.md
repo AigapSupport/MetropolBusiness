@@ -317,11 +317,13 @@ Hata 422 `METROPOL_ERROR` (7085 Alışveriş başarısız vb.), 409 `DUPLICATE_O
 ```json
 {
   "senderCardId":"uuid",
-  "receiver": { "type":"card|qr|phone|saved", "value":"token-or-cardNo-or-phone-or-recipientId" },
+  "receiver": { "type":"card|qr|phone|saved", "value":"receiverToken-or-phone-or-recipientId" },
   "walletId":1, "amount":"500.00", "note":"",
   "saveRecipient": true, "recipientLabel":"Annem"
 }
 ```
+`receiver.type` sözlüğü: `saved` → kayıtlı alıcı id'si · `phone` → aynı tenant'ta telefon · `qr` → `resolve-qr`'dan dönen `receiverToken` · `card` → **`confirm-card` adımından dönen `receiverToken`** (kart numarası DEĞİL — alıcı kartı önce verify-card/confirm-card OTP akışıyla doğrulanır).
+
 Yanıt 200:
 ```json
 { "success":true, "senderName":"gediz uçar", "receiverMaskedName":"Al*** Te**",
@@ -331,6 +333,19 @@ Hata 422 `METROPOL_ERROR`, 409 `DUPLICATE_OPERATION`.
 
 ### POST /metropol/transfer/resolve-qr
 QR'dan alıcı çözümleme: `{ "qrPayload":"string" }` → `{ "receiverMaskedName":"", "receiverMaskedCardNo":"", "receiverToken":"opaque" }`.
+
+### POST /metropol/transfer/verify-card
+(AddAccount) **"Başka Karta" alıcı doğrulama 1/2:** alıcı kart no + karta kayıtlı telefonla OTP SMS'i başlatılır. SMS **alıcının** telefonuna gider (aile içi senaryoda alıcı kodu gönderene söyler). Alıcının kartı bizim `cards` tablosuna **yazılmaz**; kart no/telefon loglanmaz.
+İstek: `{ "cardNo":"6375021912342976", "mobilePhone":"5551112233" }` → Yanıt 200: `{ "validationGuid":"..." }`.
+Hata 422 `METROPOL_ERROR`, 429 `RATE_LIMITED` (kullanıcı başına **5/saat** — SMS bombalama engeli).
+
+### POST /metropol/transfer/confirm-card
+(AddAccountConfirm) **"Başka Karta" alıcı doğrulama 2/2:** OTP doğrulanır; alıcının kartı **kaydedilmez**, yalnızca transferde kullanılacak opak token döner.
+İstek: `{ "validationGuid":"...", "validationCode":123456 }` → Yanıt 200:
+```json
+{ "receiverMaskedName":"Al*** Te**", "receiverMaskedCardNo":"637******976", "receiverToken":"opaque" }
+```
+`receiverToken`, transfer isteğinde `receiver: { "type":"card", "value":"<receiverToken>" }` olarak kullanılır. Hata 422 `METROPOL_ERROR` (yanlış/süresi geçmiş OTP dahil).
 
 ### GET /metropol/saved-recipients · POST · DELETE
 Kayıtlı alıcı yönetimi:

@@ -21,6 +21,22 @@ public interface ITransfersService
     Task<Result<ResolveQrResponse>> ResolveQrAsync(
         string? qrPayload, CancellationToken cancellationToken = default);
 
+    /// <summary>
+    /// "Başka Karta" alıcı doğrulama 1/2 (AddAccount proxy'si): alıcının karta kayıtlı
+    /// telefonuna OTP SMS'i başlatılır. SMS bombalamaya karşı kullanıcı başına rate-limit
+    /// uygulanır (429 RATE_LIMITED). DB'ye yazılmaz; kart no/telefon LOGLANMAZ.
+    /// </summary>
+    Task<Result<VerifyRecipientCardResponse>> VerifyRecipientCardAsync(
+        VerifyRecipientCardRequest request, CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// "Başka Karta" alıcı doğrulama 2/2 (AddAccountConfirm proxy'si): OTP doğrulanır,
+    /// alıcının kartı cards tablosuna KAYDEDİLMEZ — dönen opak receiverToken yalnızca
+    /// transferde (receiver.type="card") kullanılır; isim/kart no maskeli döner.
+    /// </summary>
+    Task<Result<ConfirmRecipientCardResponse>> ConfirmRecipientCardAsync(
+        ConfirmRecipientCardRequest request, CancellationToken cancellationToken = default);
+
     /// <summary>Kullanıcının kayıtlı alıcıları (tenant + kullanıcı filtreli).</summary>
     Task<Result<ItemsResponse<SavedRecipientDto>>> ListRecipientsAsync(
         CancellationToken cancellationToken = default);

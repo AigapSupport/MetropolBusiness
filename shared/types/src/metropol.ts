@@ -153,6 +153,32 @@ export interface ResolveQrResponse {
   receiverToken: string;
 }
 
+/**
+ * "Başka Karta" alıcı doğrulama 1/2 (AddAccount proxy'si, API_CONTRACT §8):
+ * OTP SMS'i alıcının KARTA KAYITLI telefonuna gider. 429 RATE_LIMITED (5/saat).
+ */
+export interface VerifyRecipientCardRequest {
+  cardNo: string;
+  mobilePhone: string;
+}
+
+export interface VerifyRecipientCardResponse {
+  validationGuid: string;
+}
+
+/** "Başka Karta" alıcı doğrulama 2/2 (AddAccountConfirm) — alıcının kartı KAYDEDİLMEZ. */
+export interface ConfirmRecipientCardRequest {
+  validationGuid: string;
+  validationCode: number;
+}
+
+/** receiverToken OPAK'tır: transferde receiver { type: 'card', value: receiverToken } olur. */
+export interface ConfirmRecipientCardResponse {
+  receiverMaskedName: string;
+  receiverMaskedCardNo: string;
+  receiverToken: string;
+}
+
 export interface SavedRecipient {
   id: string;
   label: string;

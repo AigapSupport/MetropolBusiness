@@ -96,9 +96,12 @@ export type MetropolStackParamList = {
   PaySuccess: { receipt: PayReceiptParams };
   // Transfer (PRD §8.7)
   TransferMenu: undefined;
-  /** mode 'fixed': alıcı önceden çözülmüş (kayıtlı alıcı / QR) — receiver zorunlu. */
+  /** mode 'fixed': alıcı önceden çözülmüş (kayıtlı alıcı / QR / doğrulanmış kart) — receiver zorunlu. */
   TransferForm: { mode: 'self' | 'phone' | 'fixed'; receiver?: TransferReceiverParam };
   TransferQr: undefined;
+  // "Başka Karta" alıcı doğrulama — 2 adım (AddAccount OTP akışı, API_CONTRACT §8)
+  TransferCardRecipient: undefined;
+  TransferCardOtp: { cardNo: string; phone: string; validationGuid: string };
   SavedRecipients: undefined;
   TransferConfirm: TransferConfirmParams;
   TransferSuccess: { receipt: TransferReceiptParams };

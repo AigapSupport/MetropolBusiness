@@ -12,6 +12,8 @@ import type {
   CardSummary,
   ConfirmCardRequest,
   ConfirmCardResponse,
+  ConfirmRecipientCardRequest,
+  ConfirmRecipientCardResponse,
   PresaleInfoRequest,
   PresaleInfoResponse,
   ResolveQrRequest,
@@ -22,6 +24,8 @@ import type {
   TransactionItem,
   TransferRequest,
   TransferResponse,
+  VerifyRecipientCardRequest,
+  VerifyRecipientCardResponse,
 } from '@shared/metropol';
 
 import { api } from './client';
@@ -104,6 +108,22 @@ export const metropolApi = {
   /** QR yükünden alıcı çözümleme (maskeli ad/no + opak token). */
   resolveTransferQr(request: ResolveQrRequest): Promise<ResolveQrResponse> {
     return api.post<ResolveQrResponse>('/metropol/transfer/resolve-qr', request);
+  },
+  /**
+   * (AddAccount) "Başka Karta" alıcı doğrulama 1/2: OTP SMS'i alıcının karta kayıtlı
+   * telefonuna gider — 429 RATE_LIMITED dönebilir (kullanıcı başına 5/saat).
+   */
+  verifyRecipientCard(request: VerifyRecipientCardRequest): Promise<VerifyRecipientCardResponse> {
+    return api.post<VerifyRecipientCardResponse>('/metropol/transfer/verify-card', request);
+  },
+  /**
+   * (AddAccountConfirm) "Başka Karta" alıcı doğrulama 2/2: alıcının kartı KAYDEDİLMEZ;
+   * maskeli alıcı + opak receiverToken döner (transferde receiver.type='card' value'su).
+   */
+  confirmRecipientCard(
+    request: ConfirmRecipientCardRequest,
+  ): Promise<ConfirmRecipientCardResponse> {
+    return api.post<ConfirmRecipientCardResponse>('/metropol/transfer/confirm-card', request);
   },
   /** Kayıtlı alıcılar — ekleme transfer isteğindeki saveRecipient bayrağıyla yapılır. */
   getSavedRecipients(): Promise<ItemList<SavedRecipient>> {

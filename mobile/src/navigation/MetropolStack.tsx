@@ -18,6 +18,8 @@ import { PayQrScreen } from '@/screens/Metropol/Spend/PayQrScreen';
 import { PaySelectCardScreen } from '@/screens/Metropol/Spend/PaySelectCardScreen';
 import { PaySuccessScreen } from '@/screens/Metropol/Spend/PaySuccessScreen';
 import { SavedRecipientsScreen } from '@/screens/Metropol/Transfer/SavedRecipientsScreen';
+import { TransferCardOtpScreen } from '@/screens/Metropol/Transfer/TransferCardOtpScreen';
+import { TransferCardRecipientScreen } from '@/screens/Metropol/Transfer/TransferCardRecipientScreen';
 import { TransferConfirmScreen } from '@/screens/Metropol/Transfer/TransferConfirmScreen';
 import { TransferFormScreen } from '@/screens/Metropol/Transfer/TransferFormScreen';
 import { TransferMenuScreen } from '@/screens/Metropol/Transfer/TransferMenuScreen';
@@ -47,6 +49,9 @@ export function MetropolStack() {
       <Stack.Screen name="TransferMenu" component={TransferMenuScreen} />
       <Stack.Screen name="TransferForm" component={TransferFormScreen} />
       <Stack.Screen name="TransferQr" component={TransferQrScreen} />
+      {/* "Başka Karta" alıcı doğrulama — 2 adım (AddAccount OTP akışı) */}
+      <Stack.Screen name="TransferCardRecipient" component={TransferCardRecipientScreen} />
+      <Stack.Screen name="TransferCardOtp" component={TransferCardOtpScreen} />
       <Stack.Screen name="SavedRecipients" component={SavedRecipientsScreen} />
       <Stack.Screen name="TransferConfirm" component={TransferConfirmScreen} />
       <Stack.Screen

@@ -39,6 +39,25 @@ public sealed class MetropolTransferController(ITransfersService transfersServic
         ResolveQrRequest request, CancellationToken cancellationToken) =>
         (await transfersService.ResolveQrAsync(request.QrPayload, cancellationToken)).ToActionResult();
 
+    /// <summary>
+    /// POST /metropol/transfer/verify-card — "Başka Karta" alıcı doğrulama 1/2 (AddAccount):
+    /// OTP SMS'i alıcının karta kayıtlı telefonuna gider; kullanıcı başına rate-limit (429).
+    /// </summary>
+    [HttpPost("transfer/verify-card")]
+    public async Task<IActionResult> VerifyRecipientCard(
+        VerifyRecipientCardRequest request, CancellationToken cancellationToken) =>
+        (await transfersService.VerifyRecipientCardAsync(request, cancellationToken)).ToActionResult();
+
+    /// <summary>
+    /// POST /metropol/transfer/confirm-card — "Başka Karta" alıcı doğrulama 2/2
+    /// (AddAccountConfirm): kart KAYDEDİLMEZ; maskeli alıcı + opak receiverToken döner
+    /// (transferde receiver.type="card" value'su).
+    /// </summary>
+    [HttpPost("transfer/confirm-card")]
+    public async Task<IActionResult> ConfirmRecipientCard(
+        ConfirmRecipientCardRequest request, CancellationToken cancellationToken) =>
+        (await transfersService.ConfirmRecipientCardAsync(request, cancellationToken)).ToActionResult();
+
     /// <summary>GET /metropol/saved-recipients — kullanıcının kayıtlı alıcıları { items }.</summary>
     [HttpGet("saved-recipients")]
     public async Task<IActionResult> GetSavedRecipients(CancellationToken cancellationToken) =>

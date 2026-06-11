@@ -6,7 +6,10 @@ namespace MetropolBusiness.Application.Payments;
 /// <summary>Alıcı türü sabitleri (API_CONTRACT §8 receiver.type sözlüğü).</summary>
 public static class TransferReceiverTypes
 {
-    /// <summary>[!] Desteklenmiyor: tam kart no bizde tutulmaz, Metropol'de no→token ucu yok (LESSONS.md).</summary>
+    /// <summary>
+    /// confirm-card adımından dönen OPAK doğrulanmış alıcı token'ı (AddAccount OTP akışı —
+    /// kart numarası DEĞİL; tam kart no bizde tutulmaz, LESSONS.md).
+    /// </summary>
     public const string Card = "card";
 
     /// <summary>QR'dan çözülen OPAK alıcı token'ı (resolve-qr çıktısı).</summary>
@@ -46,6 +49,33 @@ public sealed record TransferResponse(
 
 /// <summary>POST /metropol/transfer/resolve-qr isteği.</summary>
 public sealed record ResolveQrRequest(string QrPayload);
+
+/// <summary>
+/// POST /metropol/transfer/verify-card isteği ("Başka Karta" alıcı doğrulama 1/2,
+/// Metropol AddAccount proxy'si): OTP SMS'i alıcının KARTA KAYITLI telefonuna gider
+/// (aile içi senaryoda kod gönderene söylenir). Kart no/telefon LOGLANMAZ, DB'ye yazılmaz.
+/// </summary>
+public sealed record VerifyRecipientCardRequest(string CardNo, string MobilePhone);
+
+/// <summary>POST /metropol/transfer/verify-card yanıtı: confirm-card adımında kullanılacak guid.</summary>
+public sealed record VerifyRecipientCardResponse(string ValidationGuid);
+
+/// <summary>
+/// POST /metropol/transfer/confirm-card isteği ("Başka Karta" alıcı doğrulama 2/2,
+/// Metropol AddAccountConfirm proxy'si): yalnızca OTP doğrulanır, alıcının kartı
+/// cards tablosuna KAYDEDİLMEZ.
+/// </summary>
+public sealed record ConfirmRecipientCardRequest(string ValidationGuid, int ValidationCode);
+
+/// <summary>
+/// POST /metropol/transfer/confirm-card yanıtı: receiverToken OPAK'tır — transferde
+/// receiver.type="card" value'su olarak geri gönderilir (resolve-qr ile aynı desen);
+/// alıcı isim/kart no istemciye YALNIZCA maskeli gider (CLAUDE.md kural 4).
+/// </summary>
+public sealed record ConfirmRecipientCardResponse(
+    string ReceiverMaskedName,
+    string ReceiverMaskedCardNo,
+    string ReceiverToken);
 
 /// <summary>
 /// POST /metropol/transfer/resolve-qr yanıtı: receiverToken OPAK'tır (transfer'de

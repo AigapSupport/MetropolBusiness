@@ -1,7 +1,7 @@
 /**
  * Bakiye Transferi — ana menü (PRD §8.7, screens-metropol-transfer.jsx > TransferMenu).
- * GÖNDEREN: Kartlarım Arası / Başka Karta (DEVRE DIŞI — sözleşme boşluğu: tam kart no
- * istemcide yok, Metropol'de no→token ucu yok; TODO.md 1.7 [!] notu) / Cep Numarasına.
+ * GÖNDEREN: Kartlarım Arası / Başka Karta (alıcı kart verify-card/confirm-card OTP
+ * akışıyla doğrulanır — API_CONTRACT §8) / Cep Numarasına.
  * ALICI: Kayıtlı Alıcı / QR Kod Alıcı. GEÇMİŞ: İşlem Geçmişi.
  */
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
@@ -122,13 +122,12 @@ export function TransferMenuScreen({ navigation }: Props) {
             subtitle={t('metropol.transfer.betweenMyCardsSub')}
             onPress={() => navigation.navigate('TransferForm', { mode: 'self' })}
           />
-          {/* "Başka Karta" devre dışı: kart no→token çözümlemesi sözleşmede yok (TODO 1.7 [!]). */}
+          {/* Başka Karta: alıcı kart 2 adımlı verify-card/confirm-card OTP akışıyla doğrulanır. */}
           <MenuRow
             glyph="▤"
             title={t('metropol.transfer.toOtherCard')}
             subtitle={t('metropol.transfer.toOtherCardSub')}
-            disabled
-            disabledBadge={t('metropol.transfer.comingSoon')}
+            onPress={() => navigation.navigate('TransferCardRecipient')}
           />
           <MenuRow
             glyph="✆"

@@ -14,10 +14,12 @@ import { ErrorCodes } from '@shared/common';
 import type {
   AddCardRequest,
   ConfirmCardRequest,
+  ConfirmRecipientCardRequest,
   PresaleInfoRequest,
   SaleConfirmRequest,
   TransferRequest,
   ResolveQrRequest,
+  VerifyRecipientCardRequest,
 } from '@shared/metropol';
 
 import { ApiError } from '@/api/client';
@@ -221,6 +223,29 @@ export function useTransfer() {
 export function useResolveTransferQr() {
   return useMutation({
     mutationFn: (request: ResolveQrRequest) => metropolApi.resolveTransferQr(request),
+  });
+}
+
+/**
+ * POST /metropol/transfer/verify-card — "Başka Karta" 1/2 (AddAccount). OTP SMS'i
+ * ALICININ karta kayıtlı telefonuna gider; tekrar gönder de bu hook'la yapılır ve
+ * aynı rate-limit'e tabidir (429 RATE_LIMITED — mesaj getMetropolErrorMessage ile).
+ */
+export function useVerifyRecipientCard() {
+  return useMutation({
+    mutationFn: (request: VerifyRecipientCardRequest) => metropolApi.verifyRecipientCard(request),
+  });
+}
+
+/**
+ * POST /metropol/transfer/confirm-card — "Başka Karta" 2/2 (AddAccountConfirm).
+ * Alıcının kartı kaydedilmez; dönen opak receiverToken transferde receiver.type='card'
+ * value'su olur. Cache'e dokunmaz (kart listesi/bakiye değişmez).
+ */
+export function useConfirmRecipientCard() {
+  return useMutation({
+    mutationFn: (request: ConfirmRecipientCardRequest) =>
+      metropolApi.confirmRecipientCard(request),
   });
 }
 

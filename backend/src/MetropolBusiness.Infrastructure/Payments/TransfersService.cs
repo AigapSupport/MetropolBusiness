@@ -1,5 +1,6 @@
 using System.Globalization;
 using System.Text.Json;
+using MetropolBusiness.Application.Auth;
 using MetropolBusiness.Application.Common;
 using MetropolBusiness.Application.Payments;
 using MetropolBusiness.Domain.Entities;
@@ -25,13 +26,31 @@ public sealed class TransfersService(
     ITenantContext tenantContext,
     IFieldCipher fieldCipher,
     IMetropolApiClient metropolApiClient,
-    IDistributedCache cache) : ITransfersService
+    IDistributedCache cache,
+    IRateLimiter rateLimiter) : ITransfersService
 {
     /// <summary>Çözülemeyen alıcı alanları için yer tutucu (VARSAYIM, LESSONS.md).</summary>
     private const string UnknownMaskedValue = "***";
 
+    /// <summary>
+    /// Alıcı kartı doğrulama (verify-card) SMS kotası: kullanıcı başına 5/saat —
+    /// AddAccount her çağrıda alıcının telefonuna OTP SMS'i gönderir (SMS bombalama engeli,
+    /// CLAUDE.md §8 rate-limit).
+    /// </summary>
+    private const int RecipientVerifyMaxPerWindow = 5;
+
+    /// <summary>Anahtar öneki kullanıcı bazlıdır: "rcpverify:{userId}".</summary>
+    private const string RecipientVerifyKeyPrefix = "rcpverify:";
+
+    private static readonly TimeSpan RecipientVerifyWindow = TimeSpan.FromHours(1);
+
     private static readonly Error RecipientNotFoundError = new(
         ErrorCodes.NotFound, "Alıcı bulunamadı.", 404);
+
+    private static readonly Error RecipientVerifyRateLimitedError = new(
+        ErrorCodes.RateLimited,
+        "Çok fazla doğrulama isteği gönderildi. Lütfen daha sonra tekrar deneyin.",
+        429);
 
     private Guid RequiredUserId => tenantContext.UserId
         ?? throw new InvalidOperationException(
@@ -217,6 +236,128 @@ public sealed class TransfersService(
             new ResolveQrResponse(maskedName, maskedCardNo, token)));
     }
 
+    public async Task<Result<VerifyRecipientCardResponse>> VerifyRecipientCardAsync(
+        VerifyRecipientCardRequest request, CancellationToken cancellationToken = default)
+    {
+        if (string.IsNullOrWhiteSpace(request.CardNo) || string.IsNullOrWhiteSpace(request.MobilePhone))
+        {
+            // Hata detayına kart no/telefon DEĞERİ yazılmaz (PII) — yalnızca alan adları
+            // (CardsService.AddAsync deseni).
+            return Result<VerifyRecipientCardResponse>.Fail(new Error(
+                ErrorCodes.ValidationError,
+                "Kart numarası ve telefon alanları zorunludur.",
+                400,
+                new { fields = new[] { "cardNo", "mobilePhone" } }));
+        }
+
+        var userId = RequiredUserId;
+
+        // SMS bombalama engeli: kota geçersiz istekte (yukarıda elendi) DEĞİL, yalnızca
+        // Metropol'e SMS tetikleyecek isteklerde harcanır. Anahtar kullanıcı bazlıdır.
+        if (!await rateLimiter.TryAcquireAsync(
+                RecipientVerifyKeyPrefix + userId,
+                RecipientVerifyWindow,
+                RecipientVerifyMaxPerWindow,
+                cancellationToken))
+        {
+            return Result<VerifyRecipientCardResponse>.Fail(RecipientVerifyRateLimitedError);
+        }
+
+        // Alıcının kartı bizim cards tablosuna YAZILMAZ: AddAccount yalnızca alıcının
+        // karta kayıtlı telefonuna OTP SMS'i başlatır; kart no/telefon LOGLANMAZ.
+        var response = await metropolApiClient.AddAccountAsync(
+            new Metropol.AddAccountRequest
+            {
+                CardNo = request.CardNo.Trim(),
+                MobilePhone = request.MobilePhone.Trim(),
+            },
+            cancellationToken);
+
+        if (!MetropolErrorCatalog.IsSuccess(response.ResponseCode))
+        {
+            return Result<VerifyRecipientCardResponse>.Fail(MetropolError(response.ResponseCode));
+        }
+
+        return Result<VerifyRecipientCardResponse>.Ok(
+            new VerifyRecipientCardResponse(response.ValidationGuid));
+    }
+
+    public async Task<Result<ConfirmRecipientCardResponse>> ConfirmRecipientCardAsync(
+        ConfirmRecipientCardRequest request, CancellationToken cancellationToken = default)
+    {
+        if (string.IsNullOrWhiteSpace(request.ValidationGuid))
+        {
+            return Result<ConfirmRecipientCardResponse>.Fail(new Error(
+                ErrorCodes.ValidationError,
+                "Doğrulama bilgileri eksik.",
+                400,
+                new { fields = new[] { "validationGuid" } }));
+        }
+
+        var userId = RequiredUserId;
+        var sender = await dbContext.Users
+            .AsNoTracking()
+            .FirstOrDefaultAsync(u => u.Id == userId, cancellationToken);
+        if (sender is null)
+        {
+            return Result<ConfirmRecipientCardResponse>.Fail(new Error(
+                ErrorCodes.NotFound, "Kullanıcı bulunamadı.", 404));
+        }
+
+        // MemberId sözleşmede zorunlu alan: CardsService.ConfirmAsync'teki gibi her zaman
+        // GÖNDERENİN users.member_id'si gönderilir (istemciden alınmaz). VARSAYIM
+        // (LESSONS.md "Belgesiz Metropol semantikleri"): bu bağlamanın Metropol tarafında
+        // gönderene kalıcı kart bağı oluşturup oluşturmadığı belgesiz — Metropol testinde
+        // teyit edilecek (gerekirse DeleteUser ile temizlik).
+        if (string.IsNullOrWhiteSpace(sender.MemberId))
+        {
+            return Result<ConfirmRecipientCardResponse>.Fail(new Error(
+                ErrorCodes.ValidationError,
+                "Metropol üye numaranız (MemberId) tanımlı değil. Lütfen firma yöneticinize başvurun.",
+                400,
+                new { field = "memberId" }));
+        }
+
+        // Phone/Email/TCKN bilinçli BOŞ: bu akış yalnızca OTP doğrulaması içindir,
+        // alıcı adına profil verisi (PII) gönderilmez ve bizde tutulmaz.
+        var response = await metropolApiClient.AddAccountConfirmAsync(
+            new Metropol.AddAccountConfirmRequest
+            {
+                ValidationGuid = request.ValidationGuid.Trim(),
+                ValidationCode = request.ValidationCode,
+                Phone = string.Empty,
+                MemberId = sender.MemberId,
+                Email = string.Empty,
+                TCKN = string.Empty,
+            },
+            cancellationToken);
+
+        if (!MetropolErrorCatalog.IsSuccess(response.ResponseCode))
+        {
+            return Result<ConfirmRecipientCardResponse>.Fail(MetropolError(response.ResponseCode));
+        }
+
+        // CardsService.ConfirmAsync'ten FARK: alıcının kartı cards tablosuna KAYDEDİLMEZ.
+        // UserAccountToken istemciye OPAK receiverToken olarak döner ve yalnızca transfer
+        // isteğinde (receiver.type="card") kullanılır — resolve-qr ile aynı desen.
+        var fullName = string.Join(' ', new[] { response.Name, response.SurName }
+            .Where(part => !string.IsNullOrWhiteSpace(part)));
+        var maskedName = string.IsNullOrWhiteSpace(fullName)
+            ? UnknownMaskedValue
+            : Masking.MaskName(fullName);
+
+        // Maskeleme backend güvencesi: yanıt maskeli değilse (yıldız içermiyorsa)
+        // Masking.MaskCardNo ile maskelenir — istemciye maskesiz kart no gitmez.
+        var maskedCardNo = string.IsNullOrEmpty(response.MaskedCardNo)
+            ? UnknownMaskedValue
+            : (response.MaskedCardNo.Contains('*')
+                ? response.MaskedCardNo
+                : Masking.MaskCardNo(response.MaskedCardNo));
+
+        return Result<ConfirmRecipientCardResponse>.Ok(new ConfirmRecipientCardResponse(
+            maskedName, maskedCardNo, response.UserAccountToken));
+    }
+
     public async Task<Result<ItemsResponse<SavedRecipientDto>>> ListRecipientsAsync(
         CancellationToken cancellationToken = default)
     {
@@ -332,7 +473,8 @@ public sealed class TransfersService(
     /// saved → kendi kayıtlı alıcısının şifreli token'ı çözülür;
     /// phone → AYNI TENANT'ta telefonla aktif kullanıcı → onun aktif kartı (izolasyon);
     /// qr → value OPAK alıcı token'ı kabul edilir (VARSAYIM, LESSONS.md);
-    /// card → desteklenmiyor (tam kart no bizde yok, Metropol'de no→token ucu yok — LESSONS.md).
+    /// card → value confirm-card adımından dönen OPAK doğrulanmış alıcı token'ıdır
+    /// (AddAccount OTP akışı — kart numarası DEĞİL; LESSONS.md).
     /// </summary>
     private async Task<Result<ResolvedReceiver>> ResolveReceiverAsync(
         TransferReceiverDto? receiver, CancellationToken cancellationToken)
@@ -359,19 +501,59 @@ public sealed class TransfersService(
                     receiver.Value.Trim(), UnknownMaskedValue, UnknownMaskedValue, null));
 
             case TransferReceiverTypes.Card:
-                // [!] Sözleşme boşluğu (LESSONS.md): tam kart no bizde tutulmaz ve
-                // Metropol'de kart no → token dönüşüm ucu yok; tür şimdilik kapalı.
-                return Result<ResolvedReceiver>.Fail(new Error(
-                    ErrorCodes.ValidationError,
-                    "Kart numarasıyla transfer henüz desteklenmiyor.",
-                    400,
-                    new { field = "receiver.type" }));
+                return await ResolveCardReceiverAsync(receiver.Value, cancellationToken);
 
             default:
                 return Result<ResolvedReceiver>.Fail(new Error(
                     ErrorCodes.ValidationError, "Geçersiz alıcı türü.", 400,
                     new { field = "receiver.type" }));
         }
+    }
+
+    /// <summary>
+    /// type=card iki anlamı kapsar (API_CONTRACT §8):
+    /// 1) Kartlarım Arası: value, kullanıcının KENDİ kartının id'sidir (GUID) → şifreli token
+    ///    çözülür, maskeli alanlar kart kaydından gelir.
+    /// 2) Başka Karta: value, confirm-card adımından dönen OPAK doğrulanmış alıcı token'ıdır.
+    /// Ayrım: GUID biçiminde olup kullanıcının kendi aktif kartıyla eşleşiyorsa (1);
+    /// değilse (2). Çakışma pratikte imkânsız: Metropol token'ının, bu kullanıcının bizdeki
+    /// kart UUID'lerinden biriyle birebir aynı olması gerekirdi.
+    /// </summary>
+    private async Task<Result<ResolvedReceiver>> ResolveCardReceiverAsync(
+        string value, CancellationToken cancellationToken)
+    {
+        var trimmed = value.Trim();
+
+        if (Guid.TryParse(trimmed, out var ownCardId))
+        {
+            var userId = RequiredUserId;
+            // Sahiplik: tenant query filter + kullanıcı koşulu — başkasının kart id'si
+            // eşleşmez ve değer opak token muamelesi görür (bilgi sızıntısı yok).
+            var ownCard = await dbContext.Cards
+                .AsNoTracking()
+                .FirstOrDefaultAsync(c => c.Id == ownCardId && c.UserId == userId, cancellationToken);
+
+            if (ownCard is not null)
+            {
+                var ownToken = fieldCipher.Decrypt(ownCard.UserAccountTokenEncrypted);
+                if (ownToken is null)
+                {
+                    return Result<ResolvedReceiver>.Fail(new Error(
+                        ErrorCodes.InternalError, "Kart kaydı doğrulanamadı.", 500));
+                }
+
+                var maskedName = string.IsNullOrWhiteSpace(ownCard.HolderName)
+                    ? UnknownMaskedValue
+                    : Masking.MaskName(ownCard.HolderName);
+
+                return Result<ResolvedReceiver>.Ok(new ResolvedReceiver(
+                    ownToken, maskedName, ownCard.MaskedCardNo, ownCard.Id));
+            }
+        }
+
+        // Başka Karta: confirm-card'dan dönen opak token — kim olduğu bizde tutulmaz.
+        return Result<ResolvedReceiver>.Ok(new ResolvedReceiver(
+            trimmed, UnknownMaskedValue, UnknownMaskedValue, null));
     }
 
     private async Task<Result<ResolvedReceiver>> ResolveSavedReceiverAsync(

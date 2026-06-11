@@ -1,3 +1,4 @@
+using MetropolBusiness.Application.Auth;
 using MetropolBusiness.Application.Common;
 using MetropolBusiness.Application.Payments;
 using MetropolBusiness.Domain.Entities;
@@ -18,8 +19,9 @@ namespace MetropolBusiness.UnitTests.Payments;
 /// Transfer senaryoları (TODO 1.7 backend, API_CONTRACT §8): transfer idempotent'tir
 /// (aynı anahtar Metropol'e İKİNCİ KEZ gitmez), tutar TAM TL olmalıdır (Metropol Amount
 /// int — LESSONS.md varsayımı), telefonla alıcı YALNIZCA aynı tenant'ta çözülür
-/// (izolasyon), saveRecipient alıcıyı ŞİFRELİ token'la kaydeder, kart no ile transfer
-/// kapalıdır (sözleşme boşluğu). SQLite in-memory AppDbContext (CardsServiceTests deseni).
+/// (izolasyon), saveRecipient alıcıyı ŞİFRELİ token'la kaydeder, "Başka Karta" alıcısı
+/// AddAccount OTP akışıyla doğrulanır (verify/confirm — kart KAYDEDİLMEZ, token opak,
+/// SMS kotası kullanıcı başına 5/saat). SQLite in-memory AppDbContext (CardsServiceTests deseni).
 /// </summary>
 public sealed class TransfersServiceTests : IDisposable
 {
@@ -39,6 +41,7 @@ public sealed class TransfersServiceTests : IDisposable
     private readonly SqliteConnection _connection;
     private readonly PlaceholderFieldCipher _cipher = new();
     private readonly FakeMetropolApiClient _metropol = new();
+    private readonly CountingFakeRateLimiter _rateLimiter = new();
 
     private readonly MemoryDistributedCache _cache = new(
         Options.Create(new MemoryDistributedCacheOptions()));
@@ -67,14 +70,15 @@ public sealed class TransfersServiceTests : IDisposable
             new User
             {
                 Id = _userA1, TenantId = TenantA, Phone = "5550000001",
-                FirstName = "Gediz", LastName = "Uçar",
+                FirstName = "Gediz", LastName = "Uçar", MemberId = "MEM-A1",
             },
             new User
             {
+                // MemberId BİLİNÇLİ boş: confirm-card MemberId'siz kullanıcı testi için.
                 Id = _userA2, TenantId = TenantA, Phone = ReceiverPhone,
                 FirstName = "Ali", LastName = "Tekin",
             },
-            new User { Id = _userB1, TenantId = TenantB, Phone = OtherTenantPhone });
+            new User { Id = _userB1, TenantId = TenantB, Phone = OtherTenantPhone, MemberId = "MEM-B1" });
 
         seed.Cards.AddRange(
             new Card
@@ -217,6 +221,57 @@ public sealed class TransfersServiceTests : IDisposable
         Assert.Empty(_metropol.BalanceTransferCalls);
     }
 
+    // ── Kartlarım Arası: type=card + kendi kart id'si → kendi token'ı çözülür ─
+
+    [Fact]
+    public async Task Transfer_between_own_cards_resolves_own_token_and_masked_fields()
+    {
+        // A1'e ikinci bir kart ekle (Kartlarım Arası senaryosu).
+        var secondCardId = Guid.NewGuid();
+        const string secondCardToken = "PLAIN-TOKEN-A1-SECOND";
+        using (var seed = CreateContext(TenantA, _userA1))
+        {
+            seed.Cards.Add(new Card
+            {
+                Id = secondCardId,
+                TenantId = TenantA,
+                UserId = _userA1,
+                UserAccountTokenEncrypted = _cipher.Encrypt(secondCardToken),
+                MaskedCardNo = "637******333",
+                HolderName = "Gediz Uçar",
+            });
+            seed.SaveChanges();
+        }
+
+        var result = await CreateService(TenantA, _userA1).TransferAsync(
+            NewTransferRequest(receiver: new TransferReceiverDto("card", secondCardId.ToString())),
+            "t-key-own-cards");
+
+        Assert.True(result.IsSuccess);
+        var call = Assert.Single(_metropol.BalanceTransferCalls);
+        Assert.Equal(SenderCardToken, call.SenderCardToken);
+        Assert.Equal(secondCardToken, call.ReceiverCardToken); // kendi kartının çözülmüş token'ı
+        Assert.Equal("637******333", result.Value.ReceiverMaskedCardNo);
+        Assert.Equal("Ge*** Uç**", result.Value.ReceiverMaskedName);
+    }
+
+    [Fact]
+    public async Task Transfer_card_guid_of_another_users_card_is_not_resolved_as_own()
+    {
+        // Başka kullanıcının (A2) kart id'si: sahiplik eşleşmez → kendi kartı gibi ÇÖZÜLMEZ,
+        // değer opak token muamelesi görür (kart bilgisi sızmaz, maskeli alanlar yer tutucu).
+        var result = await CreateService(TenantA, _userA1).TransferAsync(
+            NewTransferRequest(receiver: new TransferReceiverDto("card", _receiverCardA2.ToString())),
+            "t-key-foreign-guid");
+
+        Assert.True(result.IsSuccess);
+        var call = Assert.Single(_metropol.BalanceTransferCalls);
+        // A2'nin gerçek token'ı ASLA çözülmez; ham GUID opak değer olarak gider.
+        Assert.NotEqual(ReceiverCardToken, call.ReceiverCardToken);
+        Assert.Equal(_receiverCardA2.ToString(), call.ReceiverCardToken);
+        Assert.Equal("***", result.Value.ReceiverMaskedCardNo);
+    }
+
     // ── (j) saveRecipient=true alıcıyı ŞİFRELİ token'la kaydeder ─────────────
 
     [Fact]
@@ -274,19 +329,155 @@ public sealed class TransfersServiceTests : IDisposable
         Assert.Empty(_metropol.BalanceTransferCalls);
     }
 
-    // ── kart numarasıyla transfer kapalı (sözleşme boşluğu — LESSONS.md) ─────
+    // ── 'Başka Karta': verify→confirm OTP akışı (AddAccount/AddAccountConfirm) ─
 
+    // (a) Mutlu yol: maskeli alanlar doğru döner, alıcının kartı cards tablosuna YAZILMAZ.
     [Fact]
-    public async Task Transfer_with_card_number_returns_validation_error()
+    public async Task VerifyThenConfirm_recipient_card_returns_masked_fields_without_card_record()
     {
-        var result = await CreateService(TenantA, _userA1).TransferAsync(
-            NewTransferRequest(receiver: new TransferReceiverDto("card", "6375021912342976")),
-            "t-key-card");
+        var service = CreateService(TenantA, _userA1);
+
+        var verify = await service.VerifyRecipientCardAsync(
+            new VerifyRecipientCardRequest("6375021912342976", "5551112233"));
+        Assert.True(verify.IsSuccess);
+        Assert.Equal("validation-guid-1", verify.Value.ValidationGuid);
+        var addCall = Assert.Single(_metropol.AddAccountCalls);
+        Assert.Equal("6375021912342976", addCall.CardNo);
+        Assert.Equal("5551112233", addCall.MobilePhone);
+
+        var confirm = await service.ConfirmRecipientCardAsync(
+            new ConfirmRecipientCardRequest("validation-guid-1", 123456));
+        Assert.True(confirm.IsSuccess);
+
+        // Maskeleme backend'de (fake yanıtı: Name="Test", SurName="Deneme").
+        Assert.Equal("Te*** De**", confirm.Value.ReceiverMaskedName);
+        Assert.Equal("637******976", confirm.Value.ReceiverMaskedCardNo);
+        Assert.Equal("PLAIN-TOKEN-001", confirm.Value.ReceiverToken); // opak, transferde kullanılır
+
+        // Confirm YALNIZ doğrular: MemberId gönderenin users.member_id'si (sözleşme alanı
+        // zorunlu — VARSAYIM, LESSONS.md), Phone/Email/TCKN BOŞ gider (alıcı PII'si yok).
+        var confirmCall = Assert.Single(_metropol.ConfirmCalls);
+        Assert.Equal("validation-guid-1", confirmCall.ValidationGuid);
+        Assert.Equal("MEM-A1", confirmCall.MemberId);
+        Assert.Equal(string.Empty, confirmCall.Phone);
+        Assert.Equal(string.Empty, confirmCall.Email);
+        Assert.Equal(string.Empty, confirmCall.TCKN);
+
+        // CardsService.ConfirmAsync'ten FARK: cards tablosuna KAYIT YOK (seed: 3 kart).
+        using var verifyDb = CreateContext(tenantId: null, userId: null);
+        Assert.Equal(3, await verifyDb.Cards.IgnoreQueryFilters().CountAsync());
+    }
+
+    // (b) confirm'den dönen token ile type=card transfer BAŞARILI ve idempotent.
+    [Fact]
+    public async Task Transfer_with_confirmed_card_token_succeeds_and_is_idempotent()
+    {
+        var confirm = await CreateService(TenantA, _userA1).ConfirmRecipientCardAsync(
+            new ConfirmRecipientCardRequest("validation-guid-1", 123456));
+        Assert.True(confirm.IsSuccess);
+
+        var request = NewTransferRequest(
+            receiver: new TransferReceiverDto("card", confirm.Value.ReceiverToken));
+
+        var first = await CreateService(TenantA, _userA1).TransferAsync(request, "t-key-card-token");
+        Assert.True(first.IsSuccess);
+        var call = Assert.Single(_metropol.BalanceTransferCalls);
+        Assert.Equal("PLAIN-TOKEN-001", call.ReceiverCardToken); // opak token aynen gider
+        Assert.Equal(SenderCardToken, call.SenderCardToken);
+
+        var second = await CreateService(TenantA, _userA1).TransferAsync(request, "t-key-card-token");
+        Assert.True(second.IsSuccess);
+        Assert.Equal(first.Value, second.Value); // ilk fiş AYNEN döner
+        Assert.Single(_metropol.BalanceTransferCalls); // ikinci kez para hareketi YOK
+    }
+
+    // (c) Yanlış OTP: Metropol hatası katalog mesajıyla 422 METROPOL_ERROR.
+    [Fact]
+    public async Task ConfirmRecipientCard_wrong_otp_maps_metropol_error_to_catalog_422()
+    {
+        _metropol.NextConfirmResponse.ResponseCode = 4042;
+
+        var result = await CreateService(TenantA, _userA1).ConfirmRecipientCardAsync(
+            new ConfirmRecipientCardRequest("validation-guid-1", 999999));
+
+        Assert.False(result.IsSuccess);
+        Assert.Equal(ErrorCodes.MetropolError, result.Error!.Code);
+        Assert.Equal(422, result.Error.HttpStatus);
+        Assert.Equal("İşlem gerçekleştirilemedi. (4042)", result.Error.Message); // katalog genel mesajı
+    }
+
+    // (d) verify rate-limit: 6. çağrı 429 RATE_LIMITED, Metropol'e (SMS'e) GİTMEZ.
+    [Fact]
+    public async Task VerifyRecipientCard_sixth_call_in_window_returns_429_rate_limited()
+    {
+        var service = CreateService(TenantA, _userA1);
+        var request = new VerifyRecipientCardRequest("6375021912342976", "5551112233");
+
+        for (var i = 0; i < 5; i++)
+        {
+            Assert.True((await service.VerifyRecipientCardAsync(request)).IsSuccess);
+        }
+
+        var sixth = await service.VerifyRecipientCardAsync(request);
+
+        Assert.False(sixth.IsSuccess);
+        Assert.Equal(ErrorCodes.RateLimited, sixth.Error!.Code);
+        Assert.Equal(429, sixth.Error.HttpStatus);
+        Assert.Equal(5, _metropol.AddAccountCalls.Count); // 6. istekte SMS tetiklenmez
+    }
+
+    // (e) Tenant/kullanıcı bağlamı korunur: kota kullanıcı bazlı, confirm KENDİ MemberId'siyle.
+    [Fact]
+    public async Task VerifyRecipientCard_rate_limit_is_per_user_and_confirm_uses_own_member_id()
+    {
+        // A1 kotasını doldurur; başka tenant'taki B1 bundan ETKİLENMEZ ("rcpverify:{userId}").
+        var serviceA = CreateService(TenantA, _userA1);
+        var request = new VerifyRecipientCardRequest("6375021912342976", "5551112233");
+        for (var i = 0; i < 5; i++)
+        {
+            Assert.True((await serviceA.VerifyRecipientCardAsync(request)).IsSuccess);
+        }
+        Assert.False((await serviceA.VerifyRecipientCardAsync(request)).IsSuccess);
+
+        var serviceB = CreateService(TenantB, _userB1);
+        Assert.True((await serviceB.VerifyRecipientCardAsync(request)).IsSuccess);
+
+        // Confirm her zaman OTURUM SAHİBİNİN users.member_id'siyle gider (istemciden alınmaz).
+        var confirm = await serviceB.ConfirmRecipientCardAsync(
+            new ConfirmRecipientCardRequest("validation-guid-1", 123456));
+        Assert.True(confirm.IsSuccess);
+        Assert.Equal("MEM-B1", Assert.Single(_metropol.ConfirmCalls).MemberId);
+    }
+
+    // MemberId'siz kullanıcı confirm edemez (CardsService.ConfirmAsync ile aynı kural).
+    [Fact]
+    public async Task ConfirmRecipientCard_without_member_id_returns_validation_error()
+    {
+        var result = await CreateService(TenantA, _userA2).ConfirmRecipientCardAsync(
+            new ConfirmRecipientCardRequest("validation-guid-1", 123456));
 
         Assert.False(result.IsSuccess);
         Assert.Equal(ErrorCodes.ValidationError, result.Error!.Code);
-        Assert.Equal("Kart numarasıyla transfer henüz desteklenmiyor.", result.Error.Message);
-        Assert.Empty(_metropol.BalanceTransferCalls);
+        Assert.Empty(_metropol.ConfirmCalls); // Metropol'e hiç gidilmez
+    }
+
+    // Geçersiz istek SMS kotası YAKMAZ ve Metropol'e gitmez (PII alan adlarıyla döner).
+    [Fact]
+    public async Task VerifyRecipientCard_missing_fields_returns_validation_error_without_quota_use()
+    {
+        var service = CreateService(TenantA, _userA1);
+
+        var invalid = await service.VerifyRecipientCardAsync(new VerifyRecipientCardRequest(" ", ""));
+        Assert.False(invalid.IsSuccess);
+        Assert.Equal(ErrorCodes.ValidationError, invalid.Error!.Code);
+        Assert.Empty(_metropol.AddAccountCalls);
+
+        // Kota harcanmadı: 5 geçerli istek hâlâ yapılabilir.
+        for (var i = 0; i < 5; i++)
+        {
+            Assert.True((await service.VerifyRecipientCardAsync(
+                new VerifyRecipientCardRequest("6375021912342976", "5551112233"))).IsSuccess);
+        }
     }
 
     // ── Metropol hatası katalog mesajına çevrilir, failed kaydı tekrar döner ─
@@ -396,7 +587,7 @@ public sealed class TransfersServiceTests : IDisposable
     {
         var tenantContext = new StubTenantContext(tenantId, userId);
         return new TransfersService(
-            CreateContext(tenantId, userId), tenantContext, _cipher, _metropol, _cache);
+            CreateContext(tenantId, userId), tenantContext, _cipher, _metropol, _cache, _rateLimiter);
     }
 
     private AppDbContext CreateContext(Guid? tenantId, Guid? userId)
@@ -417,5 +608,31 @@ public sealed class TransfersServiceTests : IDisposable
         public bool IsPlatformAdmin => false;
         public Guid RequiredTenantId => TenantId
             ?? throw new InvalidOperationException("Tenant bağlamı yok.");
+    }
+
+    /// <summary>
+    /// Sayaçlı fake (PanelAuthServiceTests deseni): pencere süresi test boyunca dolmaz,
+    /// yalnızca maxCount sınırı uygulanır — verify-card SMS kotası anahtar bazında sayılır.
+    /// </summary>
+    private sealed class CountingFakeRateLimiter : IRateLimiter
+    {
+        private readonly Dictionary<string, int> _counts = new();
+
+        public Task<bool> TryAcquireAsync(
+            string key, TimeSpan window, CancellationToken cancellationToken = default) =>
+            TryAcquireAsync(key, window, maxCount: 1, cancellationToken);
+
+        public Task<bool> TryAcquireAsync(
+            string key, TimeSpan window, int maxCount, CancellationToken cancellationToken = default)
+        {
+            var current = _counts.GetValueOrDefault(key);
+            if (current >= maxCount)
+            {
+                return Task.FromResult(false);
+            }
+
+            _counts[key] = current + 1;
+            return Task.FromResult(true);
+        }
     }
 }
