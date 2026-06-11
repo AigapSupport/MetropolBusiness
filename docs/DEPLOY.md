@@ -1,8 +1,17 @@
 # DEPLOY — MetropolBusiness (AiGAP VPS / Traefik)
 
-> Deploy modeli: [aigap-deploy-template](https://github.com/AigapSupport/aigap-deploy-template).
+> Deploy modeli: [aigap-deploy-template](https://github.com/AigapSupport/aigap-deploy-template)
+> (Larabay dev kurulumuyla aynı desen).
 > Paylaşılan VPS'te **Traefik** 80/443'ü tutar ve hostname'e göre yönlendirir;
 > bu proje **port açmaz**, `edge` ağına katılıp route ile yayınlanır.
+>
+> **Dev ortamı:** `yedibella.com` — repo: `https://github.com/AigapSupport/MetropolBusiness.git`
+>
+> | Subdomain | Ne | Container |
+> |---|---|---|
+> | `api.yedibella.com` | API + SignalR (mobil) | `metropolbusiness-app:8080` |
+> | `panel.yedibella.com` | Firma yönetim paneli | `metropolbusiness-panel:80` |
+> | `yonetim.yedibella.com` | Platform paneli | `metropolbusiness-admin:80` |
 
 ## Stack (docker-compose.prod.yml)
 
@@ -21,7 +30,8 @@ Mobil uygulama doğrudan `https://api.DOMAIN/api/v1` + `wss://api.DOMAIN/hubs/ch
 
 ```bash
 ssh aigap@<VPS_IP>
-git clone https://<TOKEN>@github.com/AigapSupport/<REPO>.git ~/metropolbusiness
+# private ise URL'e fine-grained PAT (Contents: Read) göm
+git clone https://github.com/AigapSupport/MetropolBusiness.git ~/metropolbusiness
 cd ~/metropolbusiness
 cp .env.production.example .env.production
 nano .env.production            # domain'ler, DB/JWT/Metropol/Gemini sırları
@@ -46,9 +56,9 @@ davet akışıyla şifre belirlenir.
 ## Yayına alma (Traefik route'ları — 3 adet)
 
 ```bash
-./scripts/traefik-route.sh add metropolbusiness-api    api.DOMAIN     metropolbusiness-app:8080
-./scripts/traefik-route.sh add metropolbusiness-panel  panel.DOMAIN   metropolbusiness-panel:80
-./scripts/traefik-route.sh add metropolbusiness-admin  yonetim.DOMAIN metropolbusiness-admin:80
+./scripts/traefik-route.sh add metropolbusiness-api    api.yedibella.com     metropolbusiness-app:8080
+./scripts/traefik-route.sh add metropolbusiness-panel  panel.yedibella.com   metropolbusiness-panel:80
+./scripts/traefik-route.sh add metropolbusiness-admin  yonetim.yedibella.com metropolbusiness-admin:80
 ```
 DNS'lerin VPS IP'sine baktığından emin olun; TLS'i Traefik (`le`) otomatik alır.
 SignalR websocket Traefik'ten sorunsuz geçer (ek ayar gerekmez).
@@ -61,10 +71,10 @@ ssh aigap@<VPS_IP> 'cd ~/metropolbusiness && ./deploy.sh'
 
 ## Mobil yapılandırma
 
-`mobile/src/utils/config.ts` şu an localhost'a bakar; release build öncesi:
+`mobile/src/utils/config.ts` şu an localhost'a bakar; dev sunucusuna karşı test için:
 ```ts
-apiBaseUrl: 'https://api.DOMAIN/api/v1',
-signalRHubUrl: 'https://api.DOMAIN/hubs/chat',
+apiBaseUrl: 'https://api.yedibella.com/api/v1',
+signalRHubUrl: 'https://api.yedibella.com/hubs/chat',
 ```
 (react-native-config ile .env'e taşınması TODO'da.)
 
