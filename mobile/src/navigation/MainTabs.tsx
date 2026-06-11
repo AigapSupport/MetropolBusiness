@@ -6,7 +6,7 @@
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { useTranslation } from 'react-i18next';
 
-import { BenefitsScreen } from '@/screens/Benefits/BenefitsScreen';
+import { BenefitsStack } from '@/navigation/BenefitsStack';
 import { ChatScreen } from '@/screens/Chat/ChatScreen';
 import { OtherScreen } from '@/screens/Other/OtherScreen';
 import { useTheme } from '@/theme/ThemeProvider';
@@ -38,7 +38,7 @@ export function MainTabs() {
       <Tab.Screen name="Home" component={HomeStack} options={{ tabBarLabel: t('tabs.home') }} />
       <Tab.Screen
         name="Benefits"
-        component={BenefitsScreen}
+        component={BenefitsStack}
         options={{ tabBarLabel: t('tabs.benefits') }}
       />
       {/* Metropol kendi stack'ini taşır: ana ekran + kart ekle + harcama + transfer (PRD §8). */}

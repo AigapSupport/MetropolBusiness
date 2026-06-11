@@ -21,6 +21,15 @@ export type MainTabParamList = {
   Other: undefined;
 };
 
+/** Yan Haklar stack'i (PRD §7) — grid + kampanya liste/detay + kupon + hediye çeki. */
+export type BenefitsStackParamList = {
+  BenefitsGrid: undefined;
+  CampaignList: { categoryCode?: string; title: string };
+  CampaignDetail: { id: string };
+  /** Kupon ve hediye çeki aynı kart düzenini kullanır (PRD §7.3 — listeleme). */
+  BenefitItems: { kind: 'coupons' | 'giftcards' };
+};
+
 /** Ana Sayfa stack'i (PRD §6) — feed + duyuru detayı + anket doldurma + video oynatma. */
 export type HomeStackParamList = {
   HomeFeed: undefined;

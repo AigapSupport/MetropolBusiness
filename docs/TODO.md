@@ -151,7 +151,7 @@
 - [x] Entity: CampaignCategory (platform tanımı, filtresiz), Campaign/Coupon/GiftCard (TenantId null=global — Announcement deseni) + `BenefitsAndHrModules` migration
 - [x] Admin: kampanya kategori + kampanya CRUD (benzer kampanya ilişkisi) — backend: `PlatformBenefitsService` + `PlatformBenefitsController`; **panel UI bağlandı**: `CampaignsPage` (sayfalı liste + kategori filtresi + form modal + sil) + `CampaignCategoriesPage` (CRUD + kampanyalı kategori silme engeli) + `GlobalContentPage` (global duyuru CRUD — `/platform/announcements` ucu ve `PlatformContentService` de bu turda eklendi, §13)
 - [x] Backend: benefits uçları — `BenefitsService` + `BenefitsController` (§4 birebir: categories/campaigns(+detay+similar)/coupons/giftcards; yalnız yayında + zamanı gelmiş içerik); 5 test
-- [ ] Mobile: grid, kampanya liste+detay, kupon, hediye çeki (listeleme)
+- [x] Mobile: grid, kampanya liste+detay, kupon, hediye çeki (listeleme) — `BenefitsStack`: grid (kategoriler API'den, 2'li kart), `CampaignListScreen` (satır kartları), `CampaignDetailScreen` (logo/monogram + Detaylı Bilgi Al → detailUrl + benzer kampanyalar yatay), `BenefitItemsScreen` (kupon+çek marka kartları; itfa PRD §17.4 gereği sonraki sürüm). Prototip screens-benefits.jsx düzeni; metinler tr/en
 
 ### 2.3 Sohbet
 - [x] SignalR hub (join/send/receive/typing/read) + tenant izolasyonu — `Api/Hubs/ChatHub` (ince; iş mantığı `ChatMessagingService`'te), JWT access_token query (yalnız /hubs yolu), katılımcı olmayan gruba alınmaz; AI akışı: AssistantTyping → Gemini → ReceiveMessage; Redis backplane çoklu instance'ta
