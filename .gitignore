@@ -40,6 +40,8 @@ mobile/android/app/build/
 mobile/android/build/
 mobile/android/.gradle/
 mobile/android/local.properties
+mobile/android/build.log
+mobile/android/build-apk.bat
 *.jsbundle
 .metro-health-check*
 

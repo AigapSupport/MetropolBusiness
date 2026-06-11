@@ -69,14 +69,37 @@ SignalR websocket Traefik'ten sorunsuz geçer (ek ayar gerekmez).
 ssh aigap@213.136.89.144 'cd ~/metropolbusiness && ./deploy.sh'
 ```
 
-## Mobil yapılandırma
+## Mobil yapılandırma ve build
 
-`mobile/src/utils/config.ts` şu an localhost'a bakar; dev sunucusuna karşı test için:
-```ts
-apiBaseUrl: 'https://metropolapi.yedibella.com/api/v1',
-signalRHubUrl: 'https://metropolapi.yedibella.com/hubs/chat',
-```
+`mobile/src/utils/config.ts` varsayılan olarak dev sunucusuna bakar
+(`https://metropolapi.yedibella.com`); yerel backend için dosyadaki yoruma bak.
 (react-native-config ile .env'e taşınması TODO'da.)
+
+**Dev girişi:** SMS sağlayıcı bağlanana kadar (NoopSmsSender) dev sunucuda
+`DEV_FIXED_OTP=123456` açık — seed telefonları (`5550000001..4`) + kod `123456`.
+Üretimde bu değişken BOŞ bırakılır.
+
+### Android APK (Windows'ta, admin gerekmez)
+```powershell
+# Araçlar (tek seferlik): Temurin JDK 17 + Android cmdline-tools → C:\Users\<u>\tools
+#   sdkmanager "platform-tools" "platforms;android-34" "build-tools;34.0.0" + lisanslar
+$env:JAVA_HOME="C:\Users\<u>\tools\jdk-17..."; $env:ANDROID_HOME="C:\Users\<u>\tools\android-sdk"
+cd mobile\android
+.\gradlew assembleRelease     # çıktı: app\build\outputs\apk\release\app-release.apk
+```
+Release build'i RN şablonu gereği debug keystore ile imzalıdır — dev dağıtımı için
+yeterli; mağaza yayını öncesi gerçek keystore üretilecek (Faz 3).
+
+### iOS (Mac gerektirir)
+```bash
+cd mobile && npm install
+cd ios && pod install              # CocoaPods (brew install cocoapods)
+open MetropolBusiness.xcworkspace  # Xcode 15+
+# Signing & Capabilities → Team seç (ücretsiz Apple ID 7 günlük imza verir),
+# hedef cihazı seçip Run. Dağıtım için TestFlight (Apple Developer hesabı gerekir).
+```
+Notlar: Info.plist'te kamera/konum izin metinleri hazır; `config.ts` zaten dev
+API'ye baktığı için ek ayar gerekmez. ATS https zorunluluğu sağlanıyor (TLS var).
 
 ## Deploy sonrası ilk doğrulamalar
 
