@@ -15,6 +15,11 @@ export const inputStyle: CSSProperties = {
   color: theme.colors.textPrimary,
 };
 
+export const selectStyle: CSSProperties = {
+  ...inputStyle,
+  minWidth: 180,
+};
+
 export const labelStyle: CSSProperties = {
   display: 'flex',
   flexDirection: 'column',

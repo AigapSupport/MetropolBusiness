@@ -149,7 +149,7 @@
 
 ### 2.2 Yan Haklar
 - [x] Entity: CampaignCategory (platform tanımı, filtresiz), Campaign/Coupon/GiftCard (TenantId null=global — Announcement deseni) + `BenefitsAndHrModules` migration
-- [x] Admin: kampanya kategori + kampanya CRUD (benzer kampanya ilişkisi) — `PlatformBenefitsService` + `PlatformBenefitsController` (`/platform/campaign-categories` + `/platform/campaigns`; global yazılır, kategori silmede kampanya engeli; benzer = aynı kategori otomatik)
+- [x] Admin: kampanya kategori + kampanya CRUD (benzer kampanya ilişkisi) — backend: `PlatformBenefitsService` + `PlatformBenefitsController`; **panel UI bağlandı**: `CampaignsPage` (sayfalı liste + kategori filtresi + form modal + sil) + `CampaignCategoriesPage` (CRUD + kampanyalı kategori silme engeli) + `GlobalContentPage` (global duyuru CRUD — `/platform/announcements` ucu ve `PlatformContentService` de bu turda eklendi, §13)
 - [x] Backend: benefits uçları — `BenefitsService` + `BenefitsController` (§4 birebir: categories/campaigns(+detay+similar)/coupons/giftcards; yalnız yayında + zamanı gelmiş içerik); 5 test
 - [ ] Mobile: grid, kampanya liste+detay, kupon, hediye çeki (listeleme)
 
@@ -168,7 +168,7 @@
 - [ ] Mobile: izin talebi + geçmiş
 - [ ] Mobile: masraf talebi (fiş yükleme) + geçmiş
 - [ ] Mobile: masraf onay (yönetici)
-- [ ] Web: firma masraf/izin genel görünüm + onaylayıcı atama
+- [x] Web: firma masraf/izin genel görünüm — `RequestsPage` (sekmeli izin/masraf listeleri, durum filtresi, sayfalama, fiş linki). Onaylayıcı atama ilk sürümde YOK (PRD §17.6 tek aşamalı; approver rolü + modül yetkisi yeter)
 
 ### 2.5 Hesabım/Profil tamamlama
 - [ ] Mobile: profil düzenle/güncelle, kartvizit (vCard QR), güvenlik (PIN/biyometrik/ResetPin), kart kullanım ayarları (DeactivateCard), izinler, dil, hesap silme

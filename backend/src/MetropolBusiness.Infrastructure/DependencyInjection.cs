@@ -77,6 +77,7 @@ public static class DependencyInjection
             // İçerik servisleri de AppDbContext ister (TODO 1.8).
             services.AddScoped<IContentService, ContentService>();
             services.AddScoped<IContentAdminService, ContentAdminService>();
+            services.AddScoped<IPlatformContentService, PlatformContentService>();
 
             // /me + firma admin + platform admin + marka servisleri (TODO 1.9/1.10 backend).
             services.AddScoped<IMeService, MeService>();
