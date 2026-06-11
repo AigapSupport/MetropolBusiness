@@ -10,7 +10,6 @@ import { useTranslation } from 'react-i18next';
 import {
   ActivityIndicator,
   Alert,
-  Clipboard,
   Dimensions,
   FlatList,
   Pressable,
@@ -36,6 +35,7 @@ import {
 import type { MetropolStackParamList } from '@/navigation/types';
 import { useTheme } from '@/theme/ThemeProvider';
 import { formatMoney } from '@/utils/money';
+import { clipboardModule } from '@/utils/nativeModules';
 
 import { CardVisual } from './components/CardVisual';
 import { TxRow } from './components/TxRow';
@@ -196,12 +196,16 @@ export function MetropolHomeScreen({ navigation }: Props) {
   const recentQuery = useRecentTransactions(selectedCardId);
 
   // Kopyalama geri bildirimi — kısa süreli rozet (toast yerine; ek bağımlılık yok).
+  // @react-native-clipboard/clipboard guard'lı yüklenir (core Clipboard deprecated);
+  // modül yoksa (eski native build) kopyala butonu hiç gösterilmez.
   const [copied, setCopied] = useState(false);
   const copyTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const handleCopy = (maskedCardNo: string) => {
     // Maskesiz kart no istemciye hiç gelmez (CLAUDE.md §2.4); maskeli değer kopyalanır.
-    // TODO(native): @react-native-clipboard/clipboard'a geçiş — core Clipboard deprecated.
-    Clipboard.setString(maskedCardNo);
+    if (clipboardModule === null) {
+      return;
+    }
+    clipboardModule.default.setString(maskedCardNo);
     setCopied(true);
     if (copyTimer.current !== null) {
       clearTimeout(copyTimer.current);
@@ -362,7 +366,9 @@ export function MetropolHomeScreen({ navigation }: Props) {
                       maskedCardNo={item.maskedCardNo}
                       index={index}
                       onRefresh={handleRefreshBalance}
-                      onCopy={() => handleCopy(item.maskedCardNo)}
+                      onCopy={
+                        clipboardModule !== null ? () => handleCopy(item.maskedCardNo) : undefined
+                      }
                       onDelete={() => handleDelete(item)}
                     />
                   )}

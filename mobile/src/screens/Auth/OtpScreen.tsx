@@ -33,7 +33,7 @@ export function OtpScreen({ navigation, route }: Props) {
   const { phone, otpRef: initialOtpRef, resendInSeconds } = route.params;
   const { t } = useTranslation();
   const { theme } = useTheme();
-  const { login } = useAuth();
+  const { login, suggestEnableBiometrics } = useAuth();
   const sendOtp = useSendOtp();
   const verifyOtp = useVerifyOtp();
 
@@ -88,6 +88,9 @@ export function OtpScreen({ navigation, route }: Props) {
             navigation.navigate('CompleteProfile');
           }
           // Mevcut kullanıcıda RootNavigator MainTabs'a geçer; gezinme gerekmez.
+          // Bir kerelik "Biyometrik girişi aç?" önerisi (PRD §5.1) — sensör yoksa
+          // ya da kullanıcı daha önce seçim yaptıysa sessizce atlanır.
+          suggestEnableBiometrics();
         },
       },
     );

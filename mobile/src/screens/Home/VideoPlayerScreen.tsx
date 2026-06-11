@@ -1,12 +1,14 @@
 /**
  * Video oynatma (PRD §6.3, prototip screens-home.jsx > Video).
- * TODO(Faz 1.x — native): gerçek oynatıcı react-native-video ile gelecek; native modül
- * kurulumu bu ortamda doğrulanamadığından (LESSONS.md RN native kaydı) video alanı
- * şimdilik placeholder'dır (thumbnail + oynat ikonu). Otomatik ilerleme/izleme simülasyonu
- * YOKTUR; "İzlendi olarak işaretle" butonu POST /home/videos/{id}/watch ile kullanıcı
- * bazlı izleme durumunu backend'e yazar (completed=true → izlendi, PRD §6.5).
+ * Oynatıcı react-native-video ile (guard'lı: modül yüklenemezse thumbnail
+ * placeholder kalır). onProgress ile ilerleme izlenir; süre eşiği (%90)
+ * geçilince izleme OTOMATİK olarak completed=true ile bir kez backend'e
+ * yazılır (POST /home/videos/{id}/watch, kullanıcı bazlı — PRD §6.5).
+ * Manuel "İzlendi olarak işaretle" butonu fallback olarak kalır; ekrandan
+ * çıkarken son ilerleme completed=false ile gönderilir (kaldığı yer).
  */
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
+import { useEffect, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View, Image } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -18,8 +20,15 @@ import { useVideos, useWatchVideo } from '@/hooks/useHome';
 import type { HomeStackParamList } from '@/navigation/types';
 import { useTheme } from '@/theme/ThemeProvider';
 import { formatDurationMmSs } from '@/utils/duration';
+import { videoModule } from '@/utils/nativeModules';
 
 type Props = NativeStackScreenProps<HomeStackParamList, 'VideoPlayer'>;
+
+/** İzlendi eşiği — sürenin %90'ı izlenince otomatik completed=true (PRD §6.3). */
+const WATCH_COMPLETED_RATIO = 0.9;
+
+/** Guard'lı oynatıcı bileşeni — modül yüklenemediyse null (placeholder gösterilir). */
+const VideoPlayer = videoModule !== null ? videoModule.default : null;
 
 export function VideoPlayerScreen({ navigation, route }: Props) {
   const { id } = route.params;
@@ -32,11 +41,48 @@ export function VideoPlayerScreen({ navigation, route }: Props) {
 
   const video = videos.data?.items.find((item) => item.id === id);
 
+  // Son bilinen oynatma konumu (sn) — çıkışta completed=false ile gönderilir.
+  const progressRef = useRef(0);
+  // completed=true yalnızca BİR KEZ gönderilir (otomatik eşik ya da manuel buton).
+  const completedSentRef = useRef(false);
+
+  const videoWatched = video?.watched === true;
+  useEffect(() => {
+    if (videoWatched) {
+      // Zaten izlendiyse ne otomatik completed ne de çıkış ilerlemesi gönderilir
+      // (completed=false upsert'i izlendi durumunu geriletmesin).
+      completedSentRef.current = true;
+    }
+  }, [videoWatched]);
+
+  // Ekrandan çıkarken kaldığı yeri backend'e yaz (completed=false) — PRD §6.3.
+  const { mutate: mutateWatch } = watchVideo;
+  useEffect(() => {
+    return () => {
+      const progressSeconds = Math.floor(progressRef.current);
+      if (!completedSentRef.current && progressSeconds > 0) {
+        mutateWatch({ progressSeconds, completed: false });
+      }
+    };
+  }, [mutateWatch]);
+
+  const handleProgress = (currentTime: number) => {
+    progressRef.current = currentTime;
+    if (video === undefined || completedSentRef.current) {
+      return;
+    }
+    if (video.durationSeconds > 0 && currentTime >= video.durationSeconds * WATCH_COMPLETED_RATIO) {
+      completedSentRef.current = true;
+      mutateWatch({ progressSeconds: Math.floor(currentTime), completed: true });
+    }
+  };
+
   const handleMarkWatched = () => {
     if (video === undefined) {
       return;
     }
-    watchVideo.mutate({ progressSeconds: video.durationSeconds, completed: true });
+    completedSentRef.current = true;
+    mutateWatch({ progressSeconds: video.durationSeconds, completed: true });
   };
 
   return (
@@ -72,38 +118,63 @@ export function VideoPlayerScreen({ navigation, route }: Props) {
         </View>
       ) : (
         <ScrollView contentContainerStyle={{ padding: theme.spacing.lg }}>
-          {/* Oynatıcı placeholder'ı — thumbnail + oynat ikonu (üstteki native TODO). */}
-          <View style={styles.playerWrap}>
-            {video.thumbnailUrl !== null ? (
-              <Image
-                source={{ uri: video.thumbnailUrl }}
-                style={[styles.playerArea, { borderRadius: theme.radius.md }]}
-                resizeMode="cover"
+          {VideoPlayer !== null && video.url !== '' ? (
+            /* Gerçek oynatıcı — controls açık, başlangıçta duraklatılmış. */
+            <View
+              style={[
+                styles.playerWrap,
+                {
+                  borderRadius: theme.radius.md,
+                  backgroundColor: theme.colors.navy,
+                  overflow: 'hidden',
+                },
+              ]}
+            >
+              <VideoPlayer
+                source={{ uri: video.url }}
+                style={styles.playerArea}
+                controls
+                paused
+                resizeMode="contain"
+                onProgress={(event) => handleProgress(event.currentTime)}
               />
-            ) : (
-              <View
-                style={[
-                  styles.playerArea,
-                  { borderRadius: theme.radius.md, backgroundColor: theme.colors.navySoft },
-                ]}
-              />
-            )}
-            <View style={styles.playOverlay}>
-              <View style={[styles.playCircle, { backgroundColor: theme.colors.card }]}>
-                <Text style={{ color: theme.colors.navy, fontSize: theme.fontSize.xl }}>▶</Text>
-              </View>
             </View>
-          </View>
-          <Text
-            style={{
-              fontSize: theme.fontSize.xs,
-              color: theme.colors.ink3,
-              textAlign: 'center',
-              marginTop: theme.spacing.sm,
-            }}
-          >
-            {t('video.playerPlaceholder')}
-          </Text>
+          ) : (
+            /* Oynatıcı modülü yok (eski native build) — thumbnail placeholder kalır. */
+            <>
+              <View style={styles.playerWrap}>
+                {video.thumbnailUrl !== null ? (
+                  <Image
+                    source={{ uri: video.thumbnailUrl }}
+                    style={[styles.playerArea, { borderRadius: theme.radius.md }]}
+                    resizeMode="cover"
+                  />
+                ) : (
+                  <View
+                    style={[
+                      styles.playerArea,
+                      { borderRadius: theme.radius.md, backgroundColor: theme.colors.navySoft },
+                    ]}
+                  />
+                )}
+                <View style={styles.playOverlay}>
+                  <View style={[styles.playCircle, { backgroundColor: theme.colors.card }]}>
+                    <Text style={{ color: theme.colors.navy, fontSize: theme.fontSize.xl }}>▶</Text>
+                  </View>
+                </View>
+              </View>
+              <Text
+                style={{
+                  fontSize: theme.fontSize.xs,
+                  color: theme.colors.ink3,
+                  textAlign: 'center',
+                  marginTop: theme.spacing.sm,
+                }}
+              >
+                {t('video.playerPlaceholder')}
+              </Text>
+            </>
+          )}
 
           <View style={{ marginTop: theme.spacing.lg, gap: theme.spacing.sm }}>
             {video.watched ? (

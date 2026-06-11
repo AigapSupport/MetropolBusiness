@@ -69,6 +69,8 @@ wsl --update
 
 **Kalıcı çözüm:** macOS'ta (Android için herhangi bir makinede) RN CLI 0.74 şablonundan proje üretilip (`npx @react-native-community/cli init MetropolBusiness --version 0.74.x`) `android/` ve `ios/` klasörleri bu repoya kopyalanacak. App adı `mobile/app.json > name: MetropolBusiness` ile eşleşmeli.
 
+**✅ GÜNCELLEME (2026-06-11):** android/ios klasörleri RN 0.74.5 şablonundan üretildi (Windows'ta şablon üretimi mümkün; derleme değil). 4 native modül (react-native-vision-camera v4 QR, react-native-biometrics v3, react-native-video v6, @react-native-clipboard/clipboard v1) JS entegrasyonu + izinler (AndroidManifest CAMERA/USE_BIOMETRIC, minSdk 23→26, Info.plist NSCameraUsageDescription/NSFaceIDUsageDescription) eklendi; Metro bundle doğrulandı (typecheck + lint + `react-native bundle` exit 0). Tüm native modüller `mobile/src/utils/nativeModules.ts` üzerinden guard'lı (try/catch) yüklenir — modül yoksa ekranlar placeholder/fallback davranışını korur. Ek ders: Metro yalnızca string literal `require('paket')` çağrılarını çözebilir; `require(degiskenId)` "Invalid call" hatası verir — her modül ayrı try/catch bloğuyla yüklendi. Gerçek cihaz/emülatörde build doğrulaması yeni sunucu/mac ortamında.
+
 ---
 
 ## 2026-06-10 — React Query v5 + TS 5.0.4: useQuery dönüşü sessizce `any` (Faz 1.8)

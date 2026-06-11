@@ -121,3 +121,78 @@ function createTokenStorage(): ITokenStorage {
 
 /** Uygulama genelinde tek token deposu. */
 export const tokenStorage: ITokenStorage = createTokenStorage();
+
+// ---------------------------------------------------------------------------
+// Biyometrik giriş tercihi (PRD §5.1) — token'ların yanında küçük bir bayrak.
+// PII içermez; Keychain'de ayrı service altında 'true'/'false' olarak durur.
+// null = kullanıcı hiç seçim yapmamış → OTP sonrası bir kerelik öneri gösterilir.
+// ---------------------------------------------------------------------------
+
+/** Biyometrik tercih kaydı için ayrı Keychain servisi. */
+const BIOMETRIC_PREF_SERVICE = 'com.metropolbusiness.biometric';
+/** Keychain "username" alanı — tekil kayıt anahtarıdır, PII içermez. */
+const BIOMETRIC_PREF_USERNAME = 'biometric-preference';
+
+/** Biyometrik tercih deposu sözleşmesi — implementasyon (Keychain / in-memory) değişebilir. */
+export interface IBiometricPreferenceStorage {
+  save(enabled: boolean): Promise<void>;
+  /** null → hiç ayarlanmamış (öneri gösterilebilir); true/false → kullanıcı seçimi. */
+  load(): Promise<boolean | null>;
+}
+
+/** Bellek-içi tercih deposu — Keychain kullanılamadığında fallback. */
+class InMemoryBiometricPreferenceStorage implements IBiometricPreferenceStorage {
+  private enabled: boolean | null = null;
+
+  save(enabled: boolean): Promise<void> {
+    this.enabled = enabled;
+    return Promise.resolve();
+  }
+
+  load(): Promise<boolean | null> {
+    return Promise.resolve(this.enabled);
+  }
+}
+
+/** Keychain tabanlı tercih deposu — KeychainTokenStorage ile aynı guard deseni. */
+class KeychainBiometricPreferenceStorage implements IBiometricPreferenceStorage {
+  /** Native çağrı başarısız olursa tercih bu fallback'te yaşar. */
+  private readonly fallback = new InMemoryBiometricPreferenceStorage();
+
+  constructor(private readonly keychain: KeychainModule) {}
+
+  async save(enabled: boolean): Promise<void> {
+    try {
+      await this.keychain.setGenericPassword(BIOMETRIC_PREF_USERNAME, enabled ? 'true' : 'false', {
+        service: BIOMETRIC_PREF_SERVICE,
+      });
+    } catch {
+      await this.fallback.save(enabled);
+    }
+  }
+
+  async load(): Promise<boolean | null> {
+    try {
+      const credentials = await this.keychain.getGenericPassword({
+        service: BIOMETRIC_PREF_SERVICE,
+      });
+      if (credentials === false) {
+        return null;
+      }
+      return credentials.password === 'true';
+    } catch {
+      return this.fallback.load();
+    }
+  }
+}
+
+function createBiometricPreferenceStorage(): IBiometricPreferenceStorage {
+  const keychain = loadKeychainModule();
+  return keychain !== null
+    ? new KeychainBiometricPreferenceStorage(keychain)
+    : new InMemoryBiometricPreferenceStorage();
+}
+
+/** Uygulama genelinde tek biyometrik tercih deposu. */
+export const biometricPreferenceStorage: IBiometricPreferenceStorage =
+  createBiometricPreferenceStorage();

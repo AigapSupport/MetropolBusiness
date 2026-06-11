@@ -39,6 +39,18 @@
       "otpLocked": "Too many incorrect attempts. Please request a new code.",
       "otpRateLimit": "You requested codes too often. Please wait and try again.",
       "generic": "Something went wrong. Please try again."
+    },
+    "biometric": {
+      "promptTitle": "Verify your identity to continue",
+      "promptCancel": "Cancel",
+      "failedTitle": "Verification failed",
+      "failedMessage": "Biometric verification could not be completed. Would you like to try again?",
+      "retry": "Try Again",
+      "cancel": "Back to Sign In",
+      "suggestTitle": "Enable biometric sign-in?",
+      "suggestMessage": "Next time you open the app, you can sign in quickly and securely with Face ID / fingerprint.",
+      "suggestEnable": "Enable",
+      "suggestLater": "Not Now"
     }
   },
   "home": {
@@ -141,7 +153,9 @@
       "codeSubtitle": "Enter the 6-digit code on the POS screen.",
       "codeHeading": "Enter the short code",
       "qrPlaceholder": "QR scanner arrives with the native setup",
-      "qrManualHint": "Camera is unavailable in this build. You can type the value shown under the QR code on the POS screen.",
+      "qrPermissionDenied": "Camera permission was not granted. You can type the code value below.",
+      "qrStarting": "Starting camera...",
+      "qrManualHint": "If the camera is unavailable, you can type the value shown under the QR code on the POS screen.",
       "qrManualLabel": "QR Code Value",
       "qrManualPlaceholder": "Enter the QR code content",
       "selectCardTitle": "Card Selection",
@@ -187,7 +201,7 @@
       "savedRecipientSub": "Send quickly to your saved recipients",
       "qrRecipient": "QR Code Recipient",
       "qrRecipientSub": "Scan the recipient's QR code",
-      "qrManualHint": "Camera is unavailable in this build. You can type the value from the recipient's QR code.",
+      "qrManualHint": "If the camera is unavailable, you can type the value from the recipient's QR code.",
       "historySub": "All transfer activity",
       "senderCard": "Sender Card",
       "receiverCard": "Recipient Card",
@@ -251,6 +265,8 @@
     "notFound": "Video not found."
   },
   "account": {
-    "title": "My Account"
+    "title": "My Account",
+    "biometricToggle": "Biometric sign-in",
+    "biometricUnavailable": "No usable biometric sensor was found on this device."
   }
 }
