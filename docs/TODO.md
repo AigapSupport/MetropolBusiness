@@ -142,10 +142,10 @@
 
 ### 2.1 Keşfet (harita)
 - [x] `MerchantList` proxy + liste sürümleme (artımlı) + cache — `MerchantsService` (`GET /metropol/merchants`): IDistributedCache 6 saat (anahtar: sektör+listType+sürüm), `lastListVersionDate` Metropol'e aynen geçer (sürümleme Metropol'ün); geri bildirim `merchant_feedbacks` tablosunda YEREL (Metropol sözleşmesinde uç yok — LESSONS.md); 4 test
-- [ ] Mobile: harita + pin (sektör ikonları) + kümeleme
-- [ ] Mobile: filtre barı (Temizle/Sektör/Adres/Online/Listele), arama, konumum
-- [ ] Mobile: mağaza kartları (mesafe/tel/adres + yol tarifi/ara/harita)
-- [ ] Mobile: pin detayı (Yol Tarifi, bilgiler, Geri Bildirim Gönder)
+- [x] Mobile: harita + pin — `ExploreScreen`: react-native-maps GUARD'lı (native build yoksa liste görünümü + bilgi bandı; cihaz doğrulaması native build ile); ilk 100 pin, kümeleme kütüphanesi Faz 3 performans turuna [~]
+- [x] Mobile: filtre barı + arama — sektör çipleri (Hepsi/Restoran-Market/Giyim) + ad-şehir-ilçe araması (istemci tarafı); "konumum" cihaz konumu native izin gerektirir [~]
+- [x] Mobile: mağaza kartları (tel/adres + yol tarifi/ara) — liste kartları + detay panelinde Yol Tarifi (harita uygulaması, Linking) / Ara (tel:); mesafe hesabı konum izni gerektirir [~]
+- [x] Mobile: pin detayı (Yol Tarifi, bilgiler, Geri Bildirim Gönder) — alt panel: adres/telefon + geri bildirim formu (yerel `merchant_feedbacks`'e yazılır)
 
 ### 2.2 Yan Haklar
 - [x] Entity: CampaignCategory (platform tanımı, filtresiz), Campaign/Coupon/GiftCard (TenantId null=global — Announcement deseni) + `BenefitsAndHrModules` migration

@@ -378,5 +378,22 @@
                  "peopleHeader":  "KİŞİLER",
                  "searchPlaceholder":  "İsim ara…",
                  "searchHint":  "Firma içinden kişi aramak için yazın."
-             }
+             },
+    "explore":  {
+                    "title":  "Keşfet",
+                    "searchPlaceholder":  "Üye noktalarımızı keşfedin",
+                    "sectors":  {
+                                    "all":  "Hepsi",
+                                    "food":  "Restoran/Market",
+                                    "clothing":  "Giyim"
+                                },
+                    "mapUnavailable":  "Harita native kurulumla gelecek — üye işyerleri liste olarak gösteriliyor.",
+                    "empty":  "Sonuç bulunamadı.",
+                    "directions":  "Yol Tarifi",
+                    "call":  "Ara",
+                    "feedback":  "Geri Bildirim",
+                    "feedbackPlaceholder":  "Mesajınız…",
+                    "feedbackSend":  "Gönder",
+                    "feedbackThanks":  "Geri bildiriminiz alındı, teşekkürler."
+                }
 }

@@ -378,5 +378,22 @@
                  "peopleHeader":  "PEOPLE",
                  "searchPlaceholder":  "Search name…",
                  "searchHint":  "Type to search people in your company."
-             }
+             },
+    "explore":  {
+                    "title":  "Explore",
+                    "searchPlaceholder":  "Discover member locations",
+                    "sectors":  {
+                                    "all":  "All",
+                                    "food":  "Restaurant/Market",
+                                    "clothing":  "Clothing"
+                                },
+                    "mapUnavailable":  "Map arrives with the native build — merchants are shown as a list.",
+                    "empty":  "No results.",
+                    "directions":  "Directions",
+                    "call":  "Call",
+                    "feedback":  "Feedback",
+                    "feedbackPlaceholder":  "Your message…",
+                    "feedbackSend":  "Send",
+                    "feedbackThanks":  "Thanks, your feedback was received."
+                }
 }

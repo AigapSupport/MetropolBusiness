@@ -20,6 +20,7 @@ export type VisionCameraModule = typeof import('react-native-vision-camera');
 export type BiometricsModule = typeof import('react-native-biometrics');
 export type VideoModule = typeof import('react-native-video');
 export type ClipboardModule = typeof import('@react-native-clipboard/clipboard');
+export type MapsModule = typeof import('react-native-maps');
 
 function loadVisionCamera(): VisionCameraModule | null {
   try {
@@ -65,3 +66,13 @@ export const videoModule: VideoModule | null = loadVideo();
 
 /** Pano — MetropolHomeScreen kart no kopyalama (null → kopyala butonu gizlenir). */
 export const clipboardModule: ClipboardModule | null = loadClipboard();
+
+function loadMaps(): MapsModule | null {
+  try {
+    return require('react-native-maps') as MapsModule;
+  } catch {
+    return null;
+  }
+}
+
+export const mapsModule: MapsModule | null = loadMaps();
