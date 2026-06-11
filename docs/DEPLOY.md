@@ -9,9 +9,9 @@
 >
 > | Subdomain | Ne | Container |
 > |---|---|---|
-> | `api.yedibella.com` | API + SignalR (mobil) | `metropolbusiness-app:8080` |
-> | `panel.yedibella.com` | Firma yönetim paneli | `metropolbusiness-panel:80` |
-> | `yonetim.yedibella.com` | Platform paneli | `metropolbusiness-admin:80` |
+> | `metropolapi.yedibella.com` | API + SignalR (mobil) | `metropolbusiness-app:8080` |
+> | `metropolpanel.yedibella.com` | Firma yönetim paneli | `metropolbusiness-panel:80` |
+> | `metropolyonetim.yedibella.com` | Platform paneli | `metropolbusiness-admin:80` |
 
 ## Stack (docker-compose.prod.yml)
 
@@ -56,9 +56,9 @@ davet akışıyla şifre belirlenir.
 ## Yayına alma (Traefik route'ları — 3 adet)
 
 ```bash
-./scripts/traefik-route.sh add metropolbusiness-api    api.yedibella.com     metropolbusiness-app:8080
-./scripts/traefik-route.sh add metropolbusiness-panel  panel.yedibella.com   metropolbusiness-panel:80
-./scripts/traefik-route.sh add metropolbusiness-admin  yonetim.yedibella.com metropolbusiness-admin:80
+./scripts/traefik-route.sh add metropolbusiness-api    metropolapi.yedibella.com     metropolbusiness-app:8080
+./scripts/traefik-route.sh add metropolbusiness-panel  metropolpanel.yedibella.com   metropolbusiness-panel:80
+./scripts/traefik-route.sh add metropolbusiness-admin  metropolyonetim.yedibella.com metropolbusiness-admin:80
 ```
 DNS'lerin VPS IP'sine baktığından emin olun; TLS'i Traefik (`le`) otomatik alır.
 SignalR websocket Traefik'ten sorunsuz geçer (ek ayar gerekmez).
@@ -73,8 +73,8 @@ ssh aigap@<VPS_IP> 'cd ~/metropolbusiness && ./deploy.sh'
 
 `mobile/src/utils/config.ts` şu an localhost'a bakar; dev sunucusuna karşı test için:
 ```ts
-apiBaseUrl: 'https://api.yedibella.com/api/v1',
-signalRHubUrl: 'https://api.yedibella.com/hubs/chat',
+apiBaseUrl: 'https://metropolapi.yedibella.com/api/v1',
+signalRHubUrl: 'https://metropolapi.yedibella.com/hubs/chat',
 ```
 (react-native-config ile .env'e taşınması TODO'da.)
 
