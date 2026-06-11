@@ -48,8 +48,8 @@ chmod 600 .env.production
 docker exec -i metropolbusiness-postgres psql -U metropol -d metropolbusiness \
   < infra/scripts/seed.sql
 ```
-Ardından ilk platform admin kullanıcısını oluşturun (geçici): seed'deki bir
-company_admin OTP ile girebilir; gerçek platform_admin kaydı için DB'de
+Seed dev giriş bilgileri (YALNIZCA dev): `admin@demo.local` ve `admin@atlas.local`,
+şifre `Demo1234!` (company_admin). Gerçek platform_admin kaydı için DB'de
 `users.role='platform_admin'` satırı açılır ve `POST /auth/set-password`
 davet akışıyla şifre belirlenir.
 

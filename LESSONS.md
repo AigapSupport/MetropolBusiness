@@ -143,3 +143,19 @@ wsl --update
 **Durum:** `IMetropolApiClient`’ta tipli metotlar hazır (sözleşme dosyasından); bizim API’de proxy ucu ve mobil ekran bilinçli olarak YOK. Açmak gerektiğinde: `Application/Cards`’a servis + `MetropolCardsController`’a uç + mobil Güvenlik/Kart Kullanım Ayarları ekranları eklenir (OTP’li IVR akışı: CardNo+MobileNo+OtpRefCode+Otp).
 
 **Not:** Aynı ailedeki `SendOtp`/`UserBalance` IVR uçları da kullanılmıyor (uygulama OTP’si kendi backend’imizde; bakiye `BalanceQuery` ile).
+
+---
+
+## 2026-06-11 — Dev sunucu kurulumu dersleri (yedibella.com, paylaşılan AiGAP VPS)
+
+Kurulum BAŞARILI: 5 container healthy, 7 migration uygulandı, 3 Traefik route + Let's Encrypt TLS, panel login uçtan uca doğrulandı. Yol boyunca dört ders:
+
+**1. Paylaşılan edge ağında jenerik servis adı çakışması (EN KRİTİK).** `redis`, `db`, `app` gibi compose servis adları, aynı `aigap-prod_aigap-net` (edge) ağına katılan BAŞKA projelerin alias'larıyla çakışıyor. Uygulamamız `redis:6379` adını çözerken başka projenin ŞİFRELİ Redis'ine bağlandı (`NOAUTH Authentication required` → login 500). Çözüm: konteynerler arası TÜM referanslarda benzersiz container adları (`metropolbusiness-postgres`, `metropolbusiness-redis`, `metropolbusiness-app` — compose env + panel nginx proxy_pass). KURAL: edge ağına katılan bir projede jenerik DNS adı KULLANMA; şablondan türeyen her yeni proje "app" alias'ı ekleyeceği için risk kalıcı.
+
+**2. Windows'ta üretilen config dosyalarında BOM.** PowerShell'in kopyala/Set-Content yolu UTF-8 BOM yazar; nginx BOM'lu conf'u `unknown directive "﻿#"` ile reddeder (admin paneli restart döngüsü). Write tool BOM'suz yazar — config dosyaları PowerShell ile değil Write ile üretilmeli; şüphede ilk 3 byte kontrol edilir (239,187,191 = BOM).
+
+**3. busybox wget + `localhost` = IPv6 tuzağı.** nginx:alpine healthcheck'inde `wget http://localhost/...` önce `::1` dener; nginx yalnız IPv4 (`listen 80`) dinlediği için connection refused → container sonsuza dek unhealthy. Çözüm: healthcheck'lerde `127.0.0.1` kullan (compose'da düzeltildi). aspnet:8.0 (Debian wget) etkilenmiyor.
+
+**4. seed.sql şema kayması.** Faz 0'da yazılan seed, sonraki migration'larla uyumsuz kaldı (`metropol_consumer_id`→`metropol_consumer_ref`, `modules.created_at/updated_at` zorunlu oldu). BEGIN/COMMIT transaction sayesinde hata temiz rollback yaptı. Seed güncellendi + panel admin'lerine dev şifresi eklendi (admin@demo.local & admin@atlas.local / Demo1234! — YALNIZCA dev). Ders: migration ekleyen her faz seed.sql'i de gözden geçirmeli.
+
+**Dev ortam künyesi:** VPS 213.136.89.144 (`aigap@`, bu makinedeki `~/.ssh/aigap_deploy` anahtarı) · repo `~/metropolbusiness` · `https://metropolapi.yedibella.com` (API+SignalR) / `metropolpanel` (firma) / `metropolyonetim` (platform) · güncelleme: `ssh ... 'cd ~/metropolbusiness && ./deploy.sh'`. Metropol sırları + Gemini key `.env.production`'da hâlâ CHANGE_ME — gelince doldurulup `docker compose ... up -d app` yeterli.
