@@ -2,18 +2,24 @@ using System.Globalization;
 using System.Text.Json;
 using MetropolBusiness.Application.Cards;
 using MetropolBusiness.Application.Common;
+using MetropolBusiness.Domain.Entities;
 using MetropolBusiness.Infrastructure.Persistence;
 using MetropolBusiness.Integration.Metropol.Services;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Caching.Distributed;
+using Microsoft.Extensions.Logging;
 using static MetropolBusiness.Integration.Metropol.Models.MetropolModels;
 
 namespace MetropolBusiness.Infrastructure.Cards;
 
 /// <summary>
-/// Bakiye & işlem servisi (TODO 1.5 backend, API_CONTRACT §6). Bakiye/işlem DB'de
-/// SAKLANMAZ — Metropol'den canlı çekilir; bakiye ~30 sn IDistributedCache ile
+/// Bakiye & işlem servisi (TODO 1.5 backend, API_CONTRACT §6). İşlem verisi DB'de
+/// SAKLANMAZ — Metropol'den canlı çekilir. Bakiye ~30 sn IDistributedCache ile
 /// cache'lenir, forceRefresh atlar (PRD §17.7 "canlı + kısa cache + manuel yenileme").
+/// KARAR 2026-06-11: başarılı her BalanceQuery yanıtı card_balances'a UPSERT edilir
+/// (Metropol kaynak-otorite, DB son-bilinen kopya); Metropol ERİŞİLEMEZSE (exception)
+/// snapshot varsa stale=true + asOf=son senkron ile döner, iş kuralı hataları
+/// (ResponseCode != 0) eskisi gibi 422 METROPOL_ERROR kalır.
 /// Çözülen UserAccountToken yalnızca Metropol isteğinde kullanılır; LOG'LANMAZ.
 /// </summary>
 public sealed class BalanceService(
@@ -21,7 +27,8 @@ public sealed class BalanceService(
     ITenantContext tenantContext,
     IFieldCipher fieldCipher,
     IMetropolApiClient metropolApiClient,
-    IDistributedCache cache) : IBalanceService
+    IDistributedCache cache,
+    ILogger<BalanceService> logger) : IBalanceService
 {
     /// <summary>Bakiye cache süresi (PRD §17.7: ~30 sn — para verisinde tazelik önceliği).</summary>
     private static readonly TimeSpan BalanceCacheTtl = TimeSpan.FromSeconds(30);
@@ -75,32 +82,14 @@ public sealed class BalanceService(
 
         if (full is null)
         {
-            // VARSAYIM (belgesiz semantik, LESSONS.md): UserRefNo = çözülmüş UserAccountToken,
-            // UserRefType = 2 (token), WalletId = 0 → tüm cüzdanlar (MetropolDefaults sabitleri).
-            var response = await metropolApiClient.BalanceQueryAsync(
-                new BalanceQueryRequest
-                {
-                    UserRefType = MetropolDefaults.TokenUserRefType,
-                    UserRefNo = tokenResult.Value,
-                    WalletId = MetropolDefaults.AllWalletsId,
-                },
-                cancellationToken);
-
-            if (!MetropolErrorCatalog.IsSuccess(response.ResponseCode))
+            var freshResult = await FetchFreshBalanceAsync(
+                cardId, tokenResult.Value, cacheKey, cancellationToken);
+            if (!freshResult.IsSuccess)
             {
-                return Result<BalanceResponse>.Fail(MetropolError(response.ResponseCode));
+                return Result<BalanceResponse>.Fail(freshResult.Error!);
             }
 
-            var wallets = (response.UserBalance ?? [])
-                .Select(w => new WalletBalanceDto(w.WalletId, w.WalletName, FormatMoney(w.Balance)))
-                .ToList();
-            full = new BalanceResponse(wallets, FormatMoney((response.UserBalance ?? []).Sum(w => w.Balance)));
-
-            await cache.SetStringAsync(
-                cacheKey,
-                JsonSerializer.Serialize(full, JsonWeb),
-                new DistributedCacheEntryOptions { AbsoluteExpirationRelativeToNow = BalanceCacheTtl },
-                cancellationToken);
+            full = freshResult.Value;
         }
 
         if (walletId is null)
@@ -108,10 +97,151 @@ public sealed class BalanceService(
             return Result<BalanceResponse>.Ok(full);
         }
 
-        // Cüzdan filtresi: totalBalance dönen (filtrelenmiş) cüzdanların toplamıdır.
+        // Cüzdan filtresi: totalBalance dönen (filtrelenmiş) cüzdanların toplamıdır;
+        // asOf/stale tüm cüzdanlar için aynı senkrona ait olduğundan aynen taşınır.
         var filtered = full.Wallets.Where(w => w.WalletId == walletId.Value).ToList();
         var filteredTotal = filtered.Sum(w => decimal.Parse(w.Balance, CultureInfo.InvariantCulture));
-        return Result<BalanceResponse>.Ok(new BalanceResponse(filtered, FormatMoney(filteredTotal)));
+        return Result<BalanceResponse>.Ok(
+            new BalanceResponse(filtered, FormatMoney(filteredTotal), full.AsOf, full.Stale));
+    }
+
+    /// <summary>
+    /// Metropol'den taze bakiye çeker (KARAR 2026-06-11 akışı):
+    /// BAŞARILI yanıt → card_balances'a upsert + cache + asOf=şimdi, stale=false.
+    /// ERİŞİLEMEZLİK (exception) → snapshot varsa son bilinen değerler stale=true +
+    /// asOf=son senkron ile döner (PROVIDER_UNAVAILABLE yutulur, PII'siz warning log);
+    /// snapshot yoksa eski davranış korunur (exception yukarı fırlar).
+    /// İŞ KURALI hatası (ResponseCode != 0) → eskisi gibi 422 METROPOL_ERROR (snapshot'a düşülmez).
+    /// </summary>
+    private async Task<Result<BalanceResponse>> FetchFreshBalanceAsync(
+        Guid cardId, string userAccountToken, string cacheKey, CancellationToken cancellationToken)
+    {
+        BalanceQueryResponse response;
+        try
+        {
+            // VARSAYIM (belgesiz semantik, LESSONS.md): UserRefNo = çözülmüş UserAccountToken,
+            // UserRefType = 2 (token), WalletId = 0 → tüm cüzdanlar (MetropolDefaults sabitleri).
+            response = await metropolApiClient.BalanceQueryAsync(
+                new BalanceQueryRequest
+                {
+                    UserRefType = MetropolDefaults.TokenUserRefType,
+                    UserRefNo = userAccountToken,
+                    WalletId = MetropolDefaults.AllWalletsId,
+                },
+                cancellationToken);
+        }
+        catch (Exception ex) when (ex is not OperationCanceledException)
+        {
+            var snapshot = await TryLoadSnapshotAsync(cardId, cancellationToken);
+            if (snapshot is null)
+            {
+                // Snapshot yokken eski davranış: erişilemezlik yutulMAZ, yukarı fırlar.
+                throw;
+            }
+
+            // PII'siz log: kart token'ı/kullanıcı verisi YAZILMAZ, yalnız id + istisna türü.
+            logger.LogWarning(
+                ex,
+                "Metropol bakiye sorgusuna erişilemedi; son bilinen snapshot stale=true döndü. CardId={CardId}",
+                cardId);
+            return Result<BalanceResponse>.Ok(snapshot);
+        }
+
+        if (!MetropolErrorCatalog.IsSuccess(response.ResponseCode))
+        {
+            return Result<BalanceResponse>.Fail(MetropolError(response.ResponseCode));
+        }
+
+        var balances = response.UserBalance ?? [];
+        var asOf = await UpsertSnapshotAsync(cardId, balances, cancellationToken);
+
+        var wallets = balances
+            .Select(w => new WalletBalanceDto(w.WalletId, w.WalletName, FormatMoney(w.Balance)))
+            .ToList();
+        var full = new BalanceResponse(
+            wallets, FormatMoney(balances.Sum(w => w.Balance)), asOf, Stale: false);
+
+        await cache.SetStringAsync(
+            cacheKey,
+            JsonSerializer.Serialize(full, JsonWeb),
+            new DistributedCacheEntryOptions { AbsoluteExpirationRelativeToNow = BalanceCacheTtl },
+            cancellationToken);
+
+        return Result<BalanceResponse>.Ok(full);
+    }
+
+    /// <summary>
+    /// Başarılı BalanceQuery yanıtını card_balances'a UPSERT eder (KARAR 2026-06-11):
+    /// kartın mevcut cüzdan satırları güncellenir, yeni cüzdanlar eklenir, yanıtta artık
+    /// olmayan cüzdan satırları silinir (snapshot = son bilinen TAM durum). Döner: senkron
+    /// zamanı (asOf) — UpdatedAt değerleri SaveChanges'te aynı ana ayarlanır.
+    /// </summary>
+    private async Task<DateTimeOffset> UpsertSnapshotAsync(
+        Guid cardId, List<UserBalance> balances, CancellationToken cancellationToken)
+    {
+        var now = DateTimeOffset.UtcNow;
+
+        // Query filter (Card üzerinden tenant) açık kalır; sahiplik zaten doğrulandı.
+        var existing = await dbContext.CardBalances
+            .Where(cb => cb.CardId == cardId)
+            .ToListAsync(cancellationToken);
+
+        foreach (var wallet in balances)
+        {
+            var row = existing.FirstOrDefault(cb => cb.WalletId == wallet.WalletId);
+            if (row is null)
+            {
+                // TenantId, SaveChanges'te istek bağlamından otomatik atanır (ITenantOwned).
+                dbContext.CardBalances.Add(new CardBalance
+                {
+                    CardId = cardId,
+                    WalletId = wallet.WalletId,
+                    WalletName = wallet.WalletName,
+                    Balance = wallet.Balance,
+                });
+            }
+            else
+            {
+                row.WalletName = wallet.WalletName;
+                row.Balance = wallet.Balance;
+                // Değer değişmese de senkron zamanı ilerlemeli (asOf doğruluğu):
+                // UpdatedAt'e dokunmak satırı Modified yapar; SaveChanges şimdiye çeker.
+                row.UpdatedAt = now;
+            }
+        }
+
+        dbContext.CardBalances.RemoveRange(
+            existing.Where(cb => balances.All(w => w.WalletId != cb.WalletId)));
+
+        await dbContext.SaveChangesAsync(cancellationToken);
+        return now;
+    }
+
+    /// <summary>
+    /// Son bilinen bakiye snapshot'ını okur (Metropol erişilemezlik yedeği). Satır yoksa
+    /// null döner. asOf = satırların son UpdatedAt'i (son başarılı senkron), stale = true.
+    /// </summary>
+    private async Task<BalanceResponse?> TryLoadSnapshotAsync(
+        Guid cardId, CancellationToken cancellationToken)
+    {
+        var rows = await dbContext.CardBalances
+            .AsNoTracking()
+            .Where(cb => cb.CardId == cardId)
+            .OrderBy(cb => cb.WalletId)
+            .ToListAsync(cancellationToken);
+        if (rows.Count == 0)
+        {
+            return null;
+        }
+
+        var wallets = rows
+            .Select(r => new WalletBalanceDto(r.WalletId, r.WalletName, FormatMoney(r.Balance)))
+            .ToList();
+        return new BalanceResponse(
+            wallets,
+            FormatMoney(rows.Sum(r => r.Balance)),
+            rows.Max(r => r.UpdatedAt),
+            Stale: true);
     }
 
     public async Task<Result<PagedResponse<TransactionItemDto>>> GetTransactionsAsync(

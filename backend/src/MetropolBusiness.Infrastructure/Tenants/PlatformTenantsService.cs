@@ -270,6 +270,10 @@ public sealed class PlatformTenantsService(
             Status = EntityStatus.Active,
         };
 
+        // KARAR 2026-06-11: her kullanıcıya Metropol MemberId otomatik atanır (boşsa
+        // Id'nin 32 hex hali; doluysa dokunulmaz) — bkz. User.EnsureMemberId + LESSONS.md.
+        admin.EnsureMemberId();
+
         dbContext.Users.Add(admin);
         await dbContext.SaveChangesAsync(cancellationToken);
 

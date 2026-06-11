@@ -9,6 +9,7 @@ using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Caching.Distributed;
 using Microsoft.Extensions.Caching.Memory;
+using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
 using static MetropolBusiness.Integration.Metropol.Models.MetropolModels;
 
@@ -18,6 +19,9 @@ namespace MetropolBusiness.UnitTests.Cards;
 /// Bakiye & işlem senaryoları (TODO 1.5 backend, API_CONTRACT §6): bakiye ~30 sn
 /// cache'lenir (refresh=true atlar), başka tenant'ın kartına istek NOT_FOUND (izolasyon),
 /// işlemlerde isim maskelenir + tutar işaretli string + bellekte sayfalama.
+/// KARAR 2026-06-11 senaryoları: başarılı sorgu card_balances'a UPSERT (çoğalma yok),
+/// erişilemezlikte snapshot stale=true + doğru asOf, snapshot yokken eski hata davranışı,
+/// başka tenant'ın snapshot'ına erişim yok.
 /// SQLite in-memory AppDbContext + MemoryDistributedCache + kayıt eden fake client.
 /// </summary>
 public sealed class BalanceServiceTests : IDisposable
@@ -164,6 +168,133 @@ public sealed class BalanceServiceTests : IDisposable
         Assert.Equal(MetropolErrorCatalog.GetMessage(7085), result.Error.Message);
     }
 
+    // ── KARAR 2026-06-11: bakiye snapshot'ı card_balances'ta tutulur ─────────
+
+    // (a) Başarılı sorgu DB'ye snapshot yazar; ikinci sorgu satır ÇOĞALTMAZ, günceller.
+    [Fact]
+    public async Task Balance_success_upserts_snapshot_without_duplicating_rows()
+    {
+        var service = CreateBalanceService(TenantA, _userA1);
+
+        var first = await service.GetBalanceAsync(_cardA, null, forceRefresh: false);
+        Assert.True(first.IsSuccess);
+        Assert.False(first.Value.Stale);
+        Assert.NotNull(first.Value.AsOf); // asOf = senkron anı (taze yanıtta da dolu)
+
+        using (var verify = CreateContext(TenantA, _userA1))
+        {
+            var rows = verify.CardBalances.AsNoTracking()
+                .Where(cb => cb.CardId == _cardA).ToList();
+            Assert.Equal(2, rows.Count);
+            Assert.Equal(30824.00m, rows.Single(r => r.WalletId == 1).Balance);
+            Assert.Equal("RESTO", rows.Single(r => r.WalletId == 1).WalletName);
+        }
+
+        // İkinci TAZE sorgu (refresh=true): aynı cüzdanlar güncellenir, satır çoğalmaz.
+        _metropol.NextBalanceResponse = new BalanceQueryResponse
+        {
+            ResponseCode = 0,
+            ResponseMessage = "OK",
+            UserBalance =
+            [
+                new UserBalance { WalletId = 1, WalletName = "RESTO", Balance = 100.00m },
+                new UserBalance { WalletId = 3, WalletName = "GIFT", Balance = 200.00m },
+            ],
+        };
+        var second = await service.GetBalanceAsync(_cardA, null, forceRefresh: true);
+        Assert.True(second.IsSuccess);
+
+        using var verifyAfter = CreateContext(TenantA, _userA1);
+        var updated = verifyAfter.CardBalances.AsNoTracking()
+            .Where(cb => cb.CardId == _cardA).ToList();
+        Assert.Equal(2, updated.Count); // UNIQUE(card_id, wallet_id): upsert, insert değil
+        Assert.Equal(100.00m, updated.Single(r => r.WalletId == 1).Balance);
+        Assert.Equal(200.00m, updated.Single(r => r.WalletId == 3).Balance);
+    }
+
+    // (b) Metropol ERİŞİLEMEZSE (exception) son bilinen snapshot stale=true + doğru asOf döner.
+    [Fact]
+    public async Task Balance_returns_stale_snapshot_when_metropol_unreachable()
+    {
+        var service = CreateBalanceService(TenantA, _userA1);
+
+        // Önce başarılı senkron: snapshot oluşur.
+        var warm = await service.GetBalanceAsync(_cardA, null, forceRefresh: false);
+        Assert.True(warm.IsSuccess);
+
+        // Sonra Metropol düşer: refresh=true cache'i de atlar → snapshot yedeği devreye girer.
+        _metropol.NextBalanceException = new HttpRequestException("bağlantı kurulamadı");
+        var result = await service.GetBalanceAsync(_cardA, null, forceRefresh: true);
+
+        Assert.True(result.IsSuccess); // PROVIDER_UNAVAILABLE yutulur, 200 + stale
+        Assert.True(result.Value.Stale);
+        Assert.Equal(2, result.Value.Wallets.Count);
+        Assert.Equal("30824.00", result.Value.Wallets[0].Balance);
+        Assert.Equal("75405.00", result.Value.TotalBalance);
+
+        // asOf = snapshot satırlarının son UpdatedAt'i (son başarılı senkron zamanı).
+        using var verify = CreateContext(TenantA, _userA1);
+        var expectedAsOf = verify.CardBalances.AsNoTracking()
+            .Where(cb => cb.CardId == _cardA).ToList().Max(cb => cb.UpdatedAt);
+        Assert.Equal(expectedAsOf, result.Value.AsOf);
+    }
+
+    // (b2) İş kuralı hatası (ResponseCode != 0) snapshot'a DÜŞMEZ — 422 aynen kalır.
+    [Fact]
+    public async Task Balance_business_error_still_fails_even_with_snapshot()
+    {
+        var service = CreateBalanceService(TenantA, _userA1);
+        var warm = await service.GetBalanceAsync(_cardA, null, forceRefresh: false);
+        Assert.True(warm.IsSuccess);
+
+        _metropol.NextBalanceResponse.ResponseCode = 7085;
+        var result = await service.GetBalanceAsync(_cardA, null, forceRefresh: true);
+
+        Assert.False(result.IsSuccess);
+        Assert.Equal(ErrorCodes.MetropolError, result.Error!.Code);
+        Assert.Equal(422, result.Error.HttpStatus);
+    }
+
+    // (c) Snapshot YOKKEN erişilemezlik eski davranışla hata döner (yutulmaz).
+    [Fact]
+    public async Task Balance_without_snapshot_keeps_old_failure_behavior_when_unreachable()
+    {
+        _metropol.NextBalanceException = new HttpRequestException("bağlantı kurulamadı");
+        var service = CreateBalanceService(TenantA, _userA1);
+
+        await Assert.ThrowsAsync<HttpRequestException>(
+            () => service.GetBalanceAsync(_cardA, null, forceRefresh: false));
+
+        using var verify = CreateContext(TenantA, _userA1);
+        Assert.Empty(verify.CardBalances.AsNoTracking().Where(cb => cb.CardId == _cardA).ToList());
+    }
+
+    // (d) İZOLASYON: başka tenant'ın kartının snapshot'ına erişilemez.
+    [Fact]
+    public async Task Other_tenants_snapshot_is_not_accessible()
+    {
+        // Tenant B kullanıcısı kendi kartı için snapshot oluşturur.
+        var serviceB = CreateBalanceService(TenantB, _userB1);
+        var warmB = await serviceB.GetBalanceAsync(_cardB, null, forceRefresh: false);
+        Assert.True(warmB.IsSuccess);
+
+        // Query filter (Card üzerinden tenant): A bağlamında B kartının satırları görünmez.
+        using (var contextA = CreateContext(TenantA, _userA1))
+        {
+            Assert.Empty(contextA.CardBalances.AsNoTracking()
+                .Where(cb => cb.CardId == _cardB).ToList());
+        }
+
+        // Servis yolu: Metropol erişilemez olsa bile başka tenant'ın kartı NOT_FOUND kalır —
+        // sahiplik doğrulaması Metropol/snapshot'tan ÖNCE yapılır, stale veri sızmaz.
+        _metropol.NextBalanceException = new HttpRequestException("bağlantı kurulamadı");
+        var serviceA = CreateBalanceService(TenantA, _userA1);
+        var result = await serviceA.GetBalanceAsync(_cardB, null, forceRefresh: true);
+
+        Assert.False(result.IsSuccess);
+        Assert.Equal(ErrorCodes.NotFound, result.Error!.Code);
+    }
+
     // ── (f) GET /transactions: maskeleme + işaretli tutar + tip eşleme ────────
 
     [Fact]
@@ -298,7 +429,8 @@ public sealed class BalanceServiceTests : IDisposable
     {
         var tenantContext = new StubTenantContext(tenantId, userId);
         return new BalanceService(
-            CreateContext(tenantId, userId), tenantContext, _cipher, _metropol, _cache);
+            CreateContext(tenantId, userId), tenantContext, _cipher, _metropol, _cache,
+            NullLogger<BalanceService>.Instance);
     }
 
     private AppDbContext CreateContext(Guid? tenantId, Guid? userId)

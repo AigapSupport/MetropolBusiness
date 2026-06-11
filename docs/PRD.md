@@ -382,6 +382,7 @@ Profilim, Güvenlik, Kampanya/Duyuru İzinleri, Kartvizitim, Kart Kullanım Ayar
 6. **Masraf onay — tek aşamalı.** Talep → tek onaylayıcı (approver) → onay/ret. Çok aşamalı (zincirli) onay ilk sürümde yok; ihtiyaç olursa `expense_requests` akışına aşama alanları eklenir.
 
 7. **Bakiye gösterimi — canlı + kısa cache + manuel yenileme.** Varsayılan: Metropol'den canlı çekilir; performans için çok kısa Redis cache (~30 sn) opsiyonel. Kullanıcı kart üzerindeki yenile ikonuyla zorlayabilir (prototipte mevcut). *Gerekçe: para verisinde tazelik önceliği.*
+   **Güncelleme (KARAR 2026-06-11):** güncel bakiyeler ayrıca `card_balances` snapshot'ında saklanır — Metropol kaynak-otorite kalır; kesintide son bilinen bakiye `stale=true` + `asOf` ile gösterilir (ARCHITECTURE §4.2, API_CONTRACT §6).
 
 8. **Push bildirim — FCM + APNs, Faz 3.** Android FCM, iOS APNs. İlk sürümde uygulama içi bildirim listesi (prototipte var); push altyapısı Faz 3.
 

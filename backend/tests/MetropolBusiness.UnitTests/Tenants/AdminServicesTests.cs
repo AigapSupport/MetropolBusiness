@@ -147,6 +147,51 @@ public sealed class AdminServicesTests : IDisposable
         Assert.Equal(ErrorCodes.ValidationError, result.Error!.Code);
     }
 
+    // ── KARAR 2026-06-11: her kullanıcıya Metropol MemberId otomatik atanır ──
+
+    [Fact]
+    public async Task Created_user_gets_auto_member_id()
+    {
+        var serviceA = CreateUsersService(TenantA, _adminA);
+
+        var created = await serviceA.CreateUserAsync(new CompanyUserCreateRequest(
+            "5554443322", "Mehmet", "Demir", null, null, null));
+        Assert.True(created.IsSuccess);
+
+        // MemberId = Id'nin 32 hex hali ("N") — benzersiz, ek sekans altyapısı yok.
+        using var verify = CreateContext(TenantA, _adminA, isPlatformAdmin: false);
+        var user = verify.Users.AsNoTracking().Single(u => u.Id == created.Value.Id);
+        Assert.Equal(user.Id.ToString("N"), user.MemberId);
+        Assert.Equal(32, user.MemberId!.Length);
+        Assert.Matches("^[0-9a-f]{32}$", user.MemberId);
+    }
+
+    [Fact]
+    public async Task Invited_admin_gets_auto_member_id_and_filled_member_id_is_kept()
+    {
+        var service = CreatePlatformTenantsService();
+
+        var invited = await service.InviteAdminAsync(TenantB, new TenantAdminInviteRequest(
+            "5551231212", "Yeni", "Admin", null));
+        Assert.True(invited.IsSuccess);
+
+        // IgnoreQueryFilters: test platform admin bağlamında (tenant claim'i yok) doğrular.
+        using var verify = CreateContext(null, null, isPlatformAdmin: true);
+        var admin = verify.Users.IgnoreQueryFilters().AsNoTracking()
+            .Single(u => u.Id == invited.Value.Id);
+        Assert.Equal(admin.Id.ToString("N"), admin.MemberId);
+
+        // Dolu MemberId'ye DOKUNULMAZ (elle atanmış Metropol numarası korunur).
+        var manual = new User { MemberId = "3299" };
+        manual.EnsureMemberId();
+        Assert.Equal("3299", manual.MemberId);
+
+        // Boş string de "boş" sayılır ve atanır.
+        var blank = new User { MemberId = "" };
+        blank.EnsureMemberId();
+        Assert.Equal(blank.Id.ToString("N"), blank.MemberId);
+    }
+
     [Fact]
     public async Task Delete_user_deactivates_instead_of_removing()
     {

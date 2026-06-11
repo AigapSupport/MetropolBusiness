@@ -158,6 +158,10 @@ public sealed class CompanyUsersService(AppDbContext dbContext, ITenantContext t
                 .ToList(),
         };
 
+        // KARAR 2026-06-11: her kullanıcıya Metropol MemberId otomatik atanır (boşsa
+        // Id'nin 32 hex hali; doluysa dokunulmaz) — bkz. User.EnsureMemberId + LESSONS.md.
+        user.EnsureMemberId();
+
         dbContext.Users.Add(user);
         await dbContext.SaveChangesAsync(cancellationToken);
 

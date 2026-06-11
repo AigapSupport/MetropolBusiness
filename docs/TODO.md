@@ -81,7 +81,7 @@
 
 ### 1.5 Bakiye & işlem (BACKEND + MOBILE)
 - [x] `BalanceQuery` proxy (Resto/Gift; sunum: Toplam/Restoran/Market) — `BalanceService.GetBalanceAsync`: wallets[] + totalBalance (para string "0.00"); WalletId=0 tüm cüzdanlar (VARSAYIM, LESSONS.md)
-- [x] Bakiye kısa cache + manuel yenileme — ~30 sn IDistributedCache (`balance:{cardId}`), `?refresh=true` atlar (PRD §17.7)
+- [x] Bakiye kısa cache + manuel yenileme — ~30 sn IDistributedCache (`balance:{cardId}`), `?refresh=true` atlar (PRD §17.7). **Güncelleme (KARAR 2026-06-11):** başarılı her BalanceQuery `card_balances` snapshot'ına UPSERT edilir (Metropol kaynak-otorite, DB son-bilinen kopya); Metropol erişilemezse snapshot `stale=true` + `asOf=son senkron` ile 200 döner (snapshot yoksa eski hata davranışı; iş kuralı hataları 422 kalır) — `CardBalancesAndMemberId` migration'ı + users.member_id backfill (boş MemberId'lere Id 32 hex, `User.EnsureMemberId` kullanıcı oluşturma noktalarında otomatik atar)
 - [x] `TransactionHistory` / `CustomerDetailReport` proxy + sayfalama — `TransactionHistory` kullanıldı (sayfasız döner → bellekte sayfalama); `CustomerDetailReport` müşteri-numarası bazlı olduğundan bu uçta gerekmedi. Tip eşleme TranTypeId=1→sale/diğer→transfer (VARSAYIM), maskedName backend'de maskeli, tarih en iyi çaba ISO parse + `/recent` son 5 işlem
 - [x] Mobile: bakiye kartları, son 5 işlem, işlem geçmişi ekranı (filtre/sayfalama) — TOPLAM/RESTORAN/MARKET wallets'tan türetilir (walletId 1=Restoran, 3=Market), yenile ikonu `?refresh=true` (sonuç query cache'ine yazılır); son 5 `/recent`; `History/HistoryScreen`: tarih aralığı çipleri (7/30/90 gün/tümü) + useInfiniteQuery sayfalama, satırda tip ikonu + maskeli isim + onay no + tutar yeşil/kırmızı + tarih-saat
 

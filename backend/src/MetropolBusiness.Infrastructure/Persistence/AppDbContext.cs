@@ -30,6 +30,7 @@ public class AppDbContext(DbContextOptions<AppDbContext> options, ITenantContext
     public DbSet<Video> Videos => Set<Video>();
     public DbSet<VideoWatch> VideoWatches => Set<VideoWatch>();
     public DbSet<Card> Cards => Set<Card>();
+    public DbSet<CardBalance> CardBalances => Set<CardBalance>();
     public DbSet<PaymentIdempotency> PaymentIdempotencies => Set<PaymentIdempotency>();
     public DbSet<SavedRecipient> SavedRecipients => Set<SavedRecipient>();
 
@@ -75,6 +76,11 @@ public class AppDbContext(DbContextOptions<AppDbContext> options, ITenantContext
         // silinen kart bağı hiçbir sorguda görünmez (PRD §8.8 "yalnızca kart bağı kaldırılır").
         modelBuilder.Entity<Card>()
             .HasQueryFilter(c => c.DeletedAt == null && c.TenantId == _tenantContext.TenantId);
+        // Bakiye snapshot'ı (KARAR 2026-06-11): çocuk tablo ebeveyn kartın tenant'ı
+        // üzerinden filtrelenir (VideoWatch/SurveyQuestion deseni) — doğrudan sorgulansa
+        // bile başka tenant'ın kartının snapshot'ı sızmaz.
+        modelBuilder.Entity<CardBalance>()
+            .HasQueryFilter(cb => cb.Card!.TenantId == _tenantContext.TenantId);
         modelBuilder.Entity<PaymentIdempotency>()
             .HasQueryFilter(p => p.TenantId == _tenantContext.TenantId);
         modelBuilder.Entity<SavedRecipient>()

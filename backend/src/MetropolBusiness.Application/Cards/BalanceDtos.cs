@@ -7,8 +7,17 @@ namespace MetropolBusiness.Application.Cards;
 /// <summary>Cüzdan bakiyesi: { walletId, walletName, balance } (balance string "30824.00").</summary>
 public sealed record WalletBalanceDto(int WalletId, string? WalletName, string Balance);
 
-/// <summary>GET /metropol/cards/{cardId}/balance yanıtı: { wallets, totalBalance }.</summary>
-public sealed record BalanceResponse(IReadOnlyList<WalletBalanceDto> Wallets, string TotalBalance);
+/// <summary>
+/// GET /metropol/cards/{cardId}/balance yanıtı: { wallets, totalBalance, asOf, stale }.
+/// KARAR 2026-06-11: asOf = son başarılı Metropol senkron zamanı; stale=true ise Metropol
+/// erişilemedi ve değerler card_balances snapshot'ından (son bilinen) geldi. Alanlar
+/// opsiyoneldir (varsayılanlı) — mevcut istemciler kırılmaz.
+/// </summary>
+public sealed record BalanceResponse(
+    IReadOnlyList<WalletBalanceDto> Wallets,
+    string TotalBalance,
+    DateTimeOffset? AsOf = null,
+    bool Stale = false);
 
 /// <summary>
 /// İşlem listesi öğesi (API_CONTRACT §6): type = "sale|transfer", amount işaretli string

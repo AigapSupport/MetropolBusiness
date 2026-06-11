@@ -244,8 +244,10 @@ Yanıt 201: `{ "cardId":"uuid", "maskedCardNo":"637******976", "name":"Test", "s
 (BalanceQuery) `?walletId=1` opsiyonel; varsayılan tüm cüzdanlar.
 ```json
 { "wallets": [ { "walletId":1, "walletName":"RESTO", "balance":"30824.00" }, { "walletId":3, "walletName":"GIFT", "balance":"44581.00" } ],
-  "totalBalance":"59591.00" }
+  "totalBalance":"59591.00",
+  "asOf":"2026-06-11T08:45:00+00:00", "stale":false }
 ```
+> **Not (sözleşme değişikliği, KARAR 2026-06-11):** `asOf` ve `stale` alanları eklendi (opsiyonel — mevcut istemciler kırılmaz). Başarılı her BalanceQuery yanıtı backend'de `card_balances` snapshot'ına yazılır; `asOf` = son başarılı Metropol senkron zamanı, `stale=false`. Metropol **erişilemezse** (timeout/bağlantı hatası) ve snapshot varsa, son bilinen bakiye **200** + `stale=true` + `asOf=son senkron` ile döner (PROVIDER_UNAVAILABLE yutulur); snapshot yoksa eski hata davranışı korunur. Metropol **iş kuralı** hataları (ResponseCode != 0) snapshot'a düşmez, eskisi gibi 422 `METROPOL_ERROR` döner.
 
 ### GET /metropol/cards/{cardId}/transactions
 (TransactionHistory / CustomerDetailReport) `?page&pageSize&startDate&endDate`

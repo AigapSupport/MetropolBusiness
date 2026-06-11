@@ -45,6 +45,12 @@ internal sealed class FakeMetropolApiClient : IMetropolApiClient
         ResponseMessage = "OK",
     };
 
+    /// <summary>
+    /// Doluysa BalanceQueryAsync bu istisnayı fırlatır — Metropol ERİŞİLEMEZLİK senaryosu
+    /// (KARAR 2026-06-11: snapshot varsa stale yanıt, yoksa eski davranış test edilir).
+    /// </summary>
+    public Exception? NextBalanceException { get; set; }
+
     public BalanceQueryResponse NextBalanceResponse { get; set; } = new()
     {
         ResponseCode = 0,
@@ -137,7 +143,9 @@ internal sealed class FakeMetropolApiClient : IMetropolApiClient
         BalanceQueryRequest request, CancellationToken ct = default)
     {
         BalanceCalls.Add(request);
-        return Task.FromResult(NextBalanceResponse);
+        return NextBalanceException is not null
+            ? Task.FromException<BalanceQueryResponse>(NextBalanceException)
+            : Task.FromResult(NextBalanceResponse);
     }
 
     public Task<TransactionHistoryResponse> TransactionHistoryAsync(

@@ -52,6 +52,13 @@ export interface WalletBalance {
 export interface BalanceResponse {
   wallets: WalletBalance[];
   totalBalance: MoneyString;
+  /**
+   * Son başarılı Metropol senkron zamanı (KARAR 2026-06-11: bakiye snapshot'ı
+   * card_balances'ta tutulur). Opsiyonel — eski istemciler kırılmaz.
+   */
+  asOf?: IsoDateString | null;
+  /** true = Metropol erişilemedi; değerler son bilinen snapshot'tan (asOf anına ait). */
+  stale?: boolean;
 }
 
 export interface TransactionItem {

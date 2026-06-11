@@ -4,8 +4,10 @@ using MetropolBusiness.Domain.Interfaces;
 namespace MetropolBusiness.Domain.Entities;
 
 /// <summary>
-/// Kullanıcı-kart bağı (ARCHITECTURE §4.2 cards). Bakiye/işlem verisi SAKLANMAZ,
-/// Metropol'den canlı çekilir; yalnızca bağ + token tutulur.
+/// Kullanıcı-kart bağı (ARCHITECTURE §4.2 cards). İşlem verisi SAKLANMAZ, Metropol'den
+/// canlı çekilir; bağ + token tutulur. Bakiye için KARAR 2026-06-11: son başarılı
+/// BalanceQuery yanıtı <see cref="CardBalance"/> snapshot'ında da saklanır (Metropol
+/// kaynak-otorite, kesintide son bilinen + stale bayrağı).
 /// UserAccountToken at-rest ŞİFRELİ saklanır (IFieldCipher) — düz token kolonu yoktur
 /// ve token hiçbir log'a yazılmaz (CLAUDE.md kural 4).
 /// </summary>
@@ -30,4 +32,7 @@ public class Card : BaseEntity, ITenantOwned, ISoftDeletable
 
     /// <summary>Kart silme = soft-delete (yalnızca kullanıcının kart bağı kaldırılır, PRD §8.8).</summary>
     public DateTimeOffset? DeletedAt { get; set; }
+
+    /// <summary>Cüzdan bazlı son bilinen bakiye snapshot'ları (KARAR 2026-06-11).</summary>
+    public ICollection<CardBalance> Balances { get; set; } = new List<CardBalance>();
 }

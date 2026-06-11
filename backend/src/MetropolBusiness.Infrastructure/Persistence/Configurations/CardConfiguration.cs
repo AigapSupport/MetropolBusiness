@@ -40,6 +40,35 @@ public class CardConfiguration : IEntityTypeConfiguration<Card>
     }
 }
 
+public class CardBalanceConfiguration : IEntityTypeConfiguration<CardBalance>
+{
+    public void Configure(EntityTypeBuilder<CardBalance> builder)
+    {
+        builder.ToTable("card_balances");
+        builder.HasKey(cb => cb.Id);
+
+        builder.Property(cb => cb.WalletName).HasMaxLength(100);
+
+        // Para decimal/numeric(18,2) (CLAUDE.md kural 5, ARCHITECTURE §4 konvansiyonu).
+        builder.Property(cb => cb.Balance).HasColumnType("numeric(18,2)");
+
+        // Upsert anahtarı: kart başına her cüzdan tek satır (KARAR 2026-06-11).
+        builder.HasIndex(cb => new { cb.CardId, cb.WalletId }).IsUnique();
+        builder.HasIndex(cb => cb.CardId);
+        builder.HasIndex(cb => cb.TenantId);
+
+        builder.HasOne(cb => cb.Tenant)
+            .WithMany()
+            .HasForeignKey(cb => cb.TenantId)
+            .OnDelete(DeleteBehavior.Restrict);
+
+        builder.HasOne(cb => cb.Card)
+            .WithMany(c => c.Balances)
+            .HasForeignKey(cb => cb.CardId)
+            .OnDelete(DeleteBehavior.Cascade);
+    }
+}
+
 public class PaymentIdempotencyConfiguration : IEntityTypeConfiguration<PaymentIdempotency>
 {
     public void Configure(EntityTypeBuilder<PaymentIdempotency> builder)

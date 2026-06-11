@@ -112,7 +112,7 @@ Global içerik sorgusu: `WHERE tenant_id = @current OR tenant_id IS NULL`.
 | city | text NULL |
 | avatar_url | text NULL |
 | role | text | enduser/company_admin/approver |
-| member_id | text | Metropol MemberId |
+| member_id | text | Metropol MemberId (KARAR 2026-06-11: otomatik atanır — boşsa Id'nin 32 hex hali, migration backfill dahil) |
 | status | text | active/passive |
 | deleted_at | timestamptz NULL |
 - UNIQUE(tenant_id, phone)
@@ -143,7 +143,7 @@ Global içerik sorgusu: `WHERE tenant_id = @current OR tenant_id IS NULL`.
 
 ### 4.2 Kart & Metropol bağı
 
-> Bakiye ve işlem verisi **saklanmaz**, Metropol'den canlı çekilir. Yalnızca kullanıcı-kart bağı ve token tutulur.
+> **İşlem verisi saklanmaz**, Metropol'den canlı çekilir. **KARAR (2026-06-11, proje sahibi):** kartların güncel bakiyeleri `card_balances` tablosunda **snapshot** olarak da tutulur — Metropol kaynak-otorite kalır, DB son-bilinen kopyadır (kesinti dayanıklılığı): başarılı her BalanceQuery yanıtı upsert edilir; Metropol erişilemezse son bilinen bakiye `stale=true` + `asOf=son senkron` ile döner (iş kuralı hataları 422 olarak kalır). Önceki "bakiye saklanmaz, canlı çekilir" kuralı bu kararla değişti.
 
 **cards**
 | id | uuid PK |
@@ -155,6 +155,16 @@ Global içerik sorgusu: `WHERE tenant_id = @current OR tenant_id IS NULL`.
 | status | text | active/passive |
 | deleted_at | timestamptz NULL |
 - INDEX(user_id)
+
+**card_balances** (son bilinen bakiye snapshot'ı — KARAR 2026-06-11)
+| id | uuid PK |
+| tenant_id | uuid FK |
+| card_id | uuid FK→cards |
+| wallet_id | int | Metropol cüzdan (1=Resto, 3=Gift) |
+| wallet_name | text |
+| balance | numeric(18,2) | son bilinen bakiye |
+| created_at / updated_at | timestamptz | updated_at = son başarılı senkron (asOf) |
+- UNIQUE(card_id, wallet_id), INDEX(card_id)
 
 **saved_recipients** (kayıtlı transfer alıcısı)
 | id | uuid PK |
