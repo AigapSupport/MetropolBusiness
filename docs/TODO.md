@@ -141,16 +141,16 @@
 ## FAZ 2 — GENİŞLEME
 
 ### 2.1 Keşfet (harita)
-- [ ] `MerchantList` proxy + liste sürümleme (artımlı) + cache
+- [x] `MerchantList` proxy + liste sürümleme (artımlı) + cache — `MerchantsService` (`GET /metropol/merchants`): IDistributedCache 6 saat (anahtar: sektör+listType+sürüm), `lastListVersionDate` Metropol'e aynen geçer (sürümleme Metropol'ün); geri bildirim `merchant_feedbacks` tablosunda YEREL (Metropol sözleşmesinde uç yok — LESSONS.md); 4 test
 - [ ] Mobile: harita + pin (sektör ikonları) + kümeleme
 - [ ] Mobile: filtre barı (Temizle/Sektör/Adres/Online/Listele), arama, konumum
 - [ ] Mobile: mağaza kartları (mesafe/tel/adres + yol tarifi/ara/harita)
 - [ ] Mobile: pin detayı (Yol Tarifi, bilgiler, Geri Bildirim Gönder)
 
 ### 2.2 Yan Haklar
-- [ ] Entity: CampaignCategory, Campaign, Coupon, GiftCard
-- [ ] Admin: kampanya kategori + kampanya CRUD (benzer kampanya ilişkisi)
-- [ ] Backend: benefits uçları
+- [x] Entity: CampaignCategory (platform tanımı, filtresiz), Campaign/Coupon/GiftCard (TenantId null=global — Announcement deseni) + `BenefitsAndHrModules` migration
+- [x] Admin: kampanya kategori + kampanya CRUD (benzer kampanya ilişkisi) — `PlatformBenefitsService` + `PlatformBenefitsController` (`/platform/campaign-categories` + `/platform/campaigns`; global yazılır, kategori silmede kampanya engeli; benzer = aynı kategori otomatik)
+- [x] Backend: benefits uçları — `BenefitsService` + `BenefitsController` (§4 birebir: categories/campaigns(+detay+similar)/coupons/giftcards; yalnız yayında + zamanı gelmiş içerik); 5 test
 - [ ] Mobile: grid, kampanya liste+detay, kupon, hediye çeki (listeleme)
 
 ### 2.3 Sohbet
@@ -162,8 +162,8 @@
 - [ ] Offline mesaj kuyruğu
 
 ### 2.4 İK modülleri
-- [ ] Entity: LeaveRequest, ExpenseRequest (+durum/onay geçmişi)
-- [ ] Backend: leave/expense uçları + approve/reject + modül yetki kontrolü
+- [x] Entity: LeaveRequest, ExpenseRequest (+durum/onay alanları: DecidedBy/DecidedAt/DecisionNote; tutar numeric(18,2))
+- [x] Backend: leave/expense uçları + approve/reject + modül yetki kontrolü — `IModuleAccessChecker` (segment→segment_modules→aktif modül; NOT_AUTHORIZED_MODULE 403) + `HrService` (gün sayısı backend'de, yalnız pending'ten karar, kendi talebini onaylayamama, onay ekranında talep eden adı) + `HrModulesController` + `CompanyRequestsController` (firma görünümü). NOT: `expense_approval` yetkisi izin onayını da kapsar (ayrı leave_approval modülü ilk sürümde yok); onaylayıcı atama (PUT approvers) ilk sürümde yok — PRD §17.6 tek aşamalı. 9 test
 - [ ] Mobile: Diğer sekmesi modül grid (yetkiye göre)
 - [ ] Mobile: izin talebi + geçmiş
 - [ ] Mobile: masraf talebi (fiş yükleme) + geçmiş

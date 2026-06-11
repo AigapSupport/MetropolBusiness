@@ -191,9 +191,31 @@ internal sealed class FakeMetropolApiClient : IMetropolApiClient
         return Task.FromResult(NextBalanceTransferResponse);
     }
 
+    public List<MerchantListRequest> MerchantListCalls { get; } = [];
+
+    public MerchantListResponse NextMerchantListResponse { get; set; } = new()
+    {
+        ResponseCode = 0,
+        ListType = 1,
+        LastListVersionDate = "2026-03-07T17:18:38",
+        MerchantList =
+        [
+            new MerchantItem
+            {
+                MerchantCode = "0000000005", SignboardName = "İstanbul Kokoreç",
+                Sector = "Restoran", SubSector = "Büfe", City = "İstanbul", District = "Şişli",
+                SaleAddress = "adres", TelNo = "2122759134", Lat = "41.0619", Lng = "28.9979",
+                ActiveFlag = 1, CampaignCode = 0,
+            },
+        ],
+    };
+
     public Task<MerchantListResponse> MerchantListAsync(
-        MerchantListRequest request, CancellationToken ct = default) =>
-        throw new NotSupportedException("Bu test fake'i MerchantList desteklemez (Faz 1.7).");
+        MerchantListRequest request, CancellationToken ct = default)
+    {
+        MerchantListCalls.Add(request);
+        return Task.FromResult(NextMerchantListResponse);
+    }
 
     public Task<SendOtpResponse> SendOtpAsync(
         SendOtpRequest request, CancellationToken ct = default) =>

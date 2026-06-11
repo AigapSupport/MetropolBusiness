@@ -117,3 +117,19 @@ wsl --update
 - **2026-06-10 (Faz 1.7) — kart numarasıyla transfer SÖZLEŞME BOŞLUĞU (`receiver.type="card"` kapalı):** tam kart no bizde TUTULMAZ (yalnız maskeli, CLAUDE.md kural 4) ve Metropol sözleşmesinde kart no → token dönüşüm ucu yok (`BalanceTransferRequest` yalnız token alır). Bu yüzden `type="card"` şimdilik `VALIDATION_ERROR` "Kart numarasıyla transfer henüz desteklenmiyor." döner. Çözüm için Metropol'den no→token ucu veya akış kararı (proje sahibi) gerekiyor; netleşince `TransfersService.ResolveReceiverAsync` güncellenecek. **✅ ÇÖZÜLDÜ (2026-06-11, proje sahibi kararı):** alıcı kartı `AddAccount`/`AddAccountConfirm` OTP akışıyla doğrulanır (`POST /metropol/transfer/verify-card` + `confirm-card`; SMS alıcının karta kayıtlı telefonuna gider, aile içi senaryoda alıcı kodu gönderene söyler). Alıcının kartı `cards` tablosuna YAZILMAZ; confirm'den dönen `UserAccountToken` istemciye OPAK `receiverToken` olarak döner ve transferde `receiver.type="card"` value'su olarak 'qr' tipiyle aynı şekilde işlenir. verify-card SMS bombalamaya karşı kullanıcı başına 5/saat rate-limit'lidir (`rcpverify:` anahtarı, 429).
 - **2026-06-11 — MemberId biçimi/uzunluk sınırı belgesiz (otomatik atama kararı):** KARAR 2026-06-11: her kullanıcının bir Metropol MemberId'si olur (önceden nullable + elle atanıyordu). Otomatik atama biçimi: `user.Id.ToString("N")` = **32 hex karakter** — Guid'den türediği için benzersizdir, ek sekans/sayaç altyapısı gerektirmez (`User.EnsureMemberId`; kullanıcı oluşturan servisler + `CardBalancesAndMemberId` migration backfill'i). VARSAYIM: Metropol tarafının MemberId için uzunluk/biçim sınırı (örn. yalnız sayısal, ≤N karakter) BELGESİZ — dökümandaki örnekler kısa sayısal ("3299"). 32 hex reddedilirse yalnız `EnsureMemberId` biçimi değişir (tek nokta); Metropol test ortamında AddAccountConfirm/GetPreSaleInfo ile teyit edilecek. Elle atanmış dolu MemberId'lere DOKUNULMAZ.
 - **2026-06-11 (Faz 1.7) — `AddAccountConfirmRequest.MemberId`'nin bağlama etkisi belgesiz ("Başka Karta" alıcı doğrulama):** sözleşmede `MemberId` zorunlu alandır; alıcı doğrulama akışında `CardsService.ConfirmAsync` ile aynı güvenlik kuralıyla **GÖNDERENİN** `users.member_id`'si gönderilir (istemciden alınmaz). VARSAYIM: `Phone`/`Email`/`TCKN` boş gönderildiğinde çağrı yalnız OTP doğrulaması + token üretimi yapar. Metropol tarafında bu çağrının gönderene KALICI kart bağı oluşturup oluşturmadığı (ve oluşturuyorsa `DeleteUser` ile temizlik gerekip gerekmediği) BELGESİZ — Metropol test ortamında teyit edilecek; gerekiyorsa `TransfersService.ConfirmRecipientCardAsync` sonrası temizlik adımı eklenecek.
+
+---
+
+## 2026-06-11 — Merchant geri bildirimi için Metropol ucu yok (Faz 2.1)
+
+**Belirti:** API_CONTRACT §9 `POST /metropol/merchants/{code}/feedback` tanımlar; ancak `MetropolModels.cs > ApiEndpoints` içinde geri bildirim ucu YOK.
+
+**Çözüm:** Geri bildirim YEREL saklanır (`merchant_feedbacks` tablosu, tenant+kullanıcı bağlı). Metropol tarafı uç sağlarsa iletim eklenir; platform admin görünümü Faz 3 raporlama turunda değerlendirilir.
+
+---
+
+## 2026-06-11 — Workflow alt-agent'ları aylık harcama limitine takıldı
+
+**Belirti:** Faz 2 backend workflow'unda iki alt-agent "monthly spend limit" hatasıyla öldü; ilk agent 8 Domain entity dosyasını yazmış hâlde kaldı.
+
+**Çözüm/Ders:** Kalan iş ana oturumda elle tamamlandı (entity'ler devralındı, üzerine config/servis/controller/test yazıldı). Agent ölümünde çalışma ağacını `git status` ile kontrol et — yarım kalan dosyalar derlenebilir durumda olabilir ve devralınabilir.

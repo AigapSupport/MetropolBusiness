@@ -33,6 +33,13 @@ public class AppDbContext(DbContextOptions<AppDbContext> options, ITenantContext
     public DbSet<CardBalance> CardBalances => Set<CardBalance>();
     public DbSet<PaymentIdempotency> PaymentIdempotencies => Set<PaymentIdempotency>();
     public DbSet<SavedRecipient> SavedRecipients => Set<SavedRecipient>();
+    public DbSet<CampaignCategory> CampaignCategories => Set<CampaignCategory>();
+    public DbSet<Campaign> Campaigns => Set<Campaign>();
+    public DbSet<Coupon> Coupons => Set<Coupon>();
+    public DbSet<GiftCard> GiftCards => Set<GiftCard>();
+    public DbSet<LeaveRequest> LeaveRequests => Set<LeaveRequest>();
+    public DbSet<ExpenseRequest> ExpenseRequests => Set<ExpenseRequest>();
+    public DbSet<MerchantFeedback> MerchantFeedbacks => Set<MerchantFeedback>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -85,6 +92,23 @@ public class AppDbContext(DbContextOptions<AppDbContext> options, ITenantContext
             .HasQueryFilter(p => p.TenantId == _tenantContext.TenantId);
         modelBuilder.Entity<SavedRecipient>()
             .HasQueryFilter(r => r.TenantId == _tenantContext.TenantId);
+
+        // Yan haklar (Faz 2.2): Announcement deseni — null=global her tenant'a görünür.
+        // CampaignCategory platform tanımıdır (Module gibi), bilerek filtresiz.
+        modelBuilder.Entity<Campaign>()
+            .HasQueryFilter(c => c.TenantId == null || c.TenantId == _tenantContext.TenantId);
+        modelBuilder.Entity<Coupon>()
+            .HasQueryFilter(c => c.TenantId == null || c.TenantId == _tenantContext.TenantId);
+        modelBuilder.Entity<GiftCard>()
+            .HasQueryFilter(g => g.TenantId == null || g.TenantId == _tenantContext.TenantId);
+
+        // İK modülleri (Faz 2.4) + merchant geri bildirimi (Faz 2.1): tenant filtreli.
+        modelBuilder.Entity<LeaveRequest>()
+            .HasQueryFilter(l => l.TenantId == _tenantContext.TenantId);
+        modelBuilder.Entity<ExpenseRequest>()
+            .HasQueryFilter(e => e.TenantId == _tenantContext.TenantId);
+        modelBuilder.Entity<MerchantFeedback>()
+            .HasQueryFilter(f => f.TenantId == _tenantContext.TenantId);
     }
 
     public override Task<int> SaveChangesAsync(CancellationToken cancellationToken = default)

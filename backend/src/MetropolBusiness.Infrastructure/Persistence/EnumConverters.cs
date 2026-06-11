@@ -25,6 +25,25 @@ internal static class EnumConverters
     public static readonly ValueConverter<SurveyQuestionType, string> SurveyQuestionTypeConverter =
         new(type => SurveyQuestionTypeToDb(type), value => SurveyQuestionTypeFromDb(value));
 
+    public static readonly ValueConverter<RequestStatus, string> RequestStatusConverter =
+        new(status => RequestStatusToDb(status), value => RequestStatusFromDb(value));
+
+    internal static string RequestStatusToDb(RequestStatus status) => status switch
+    {
+        RequestStatus.Pending => "pending",
+        RequestStatus.Approved => "approved",
+        RequestStatus.Rejected => "rejected",
+        _ => throw new ArgumentOutOfRangeException(nameof(status), status, null),
+    };
+
+    internal static RequestStatus RequestStatusFromDb(string value) => value switch
+    {
+        "pending" => RequestStatus.Pending,
+        "approved" => RequestStatus.Approved,
+        "rejected" => RequestStatus.Rejected,
+        _ => throw new ArgumentOutOfRangeException(nameof(value), value, null),
+    };
+
     // Kimlik sözlükleri DTO eşlemesinde de kullanılır (Me/Company/Platform servisleri);
     // bu yüzden internal-görünür (Content sözlükleriyle aynı gerekçe).
 

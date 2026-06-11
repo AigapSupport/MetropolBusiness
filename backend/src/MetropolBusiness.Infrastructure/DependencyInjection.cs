@@ -1,15 +1,21 @@
 using MetropolBusiness.Application.Auth;
+using MetropolBusiness.Application.Benefits;
 using MetropolBusiness.Application.Cards;
 using MetropolBusiness.Application.Common;
 using MetropolBusiness.Application.Content;
+using MetropolBusiness.Application.Hr;
+using MetropolBusiness.Application.Merchants;
 using MetropolBusiness.Application.Payments;
 using MetropolBusiness.Application.Tenants;
 using MetropolBusiness.Application.Users;
 using MetropolBusiness.Infrastructure.Auth;
+using MetropolBusiness.Infrastructure.Benefits;
 using MetropolBusiness.Infrastructure.Cache;
 using MetropolBusiness.Infrastructure.Cards;
 using MetropolBusiness.Infrastructure.Content;
+using MetropolBusiness.Infrastructure.Hr;
 using MetropolBusiness.Infrastructure.Identity;
+using MetropolBusiness.Infrastructure.Merchants;
 using MetropolBusiness.Infrastructure.Payments;
 using MetropolBusiness.Infrastructure.Persistence;
 using MetropolBusiness.Infrastructure.Security;
@@ -87,6 +93,13 @@ public static class DependencyInjection
             // payment_idempotency ile çift işlem engeli (ARCHITECTURE §5.3).
             services.AddScoped<IPaymentsService, PaymentsService>();
             services.AddScoped<ITransfersService, TransfersService>();
+
+            // Faz 2: yan haklar + İK modülleri + keşfet (TODO 2.1/2.2/2.4 backend).
+            services.AddScoped<IBenefitsService, BenefitsService>();
+            services.AddScoped<IPlatformBenefitsService, PlatformBenefitsService>();
+            services.AddScoped<IModuleAccessChecker, ModuleAccessChecker>();
+            services.AddScoped<IHrService, HrService>();
+            services.AddScoped<IMerchantsService, MerchantsService>();
         }
 
         // At-rest alan şifrelemesi — şimdilik placeholder; gerçek (DataProtection/KMS)
