@@ -3,7 +3,9 @@ buildscript {
         buildToolsVersion = "34.0.0"
         // RN 0.74 şablon varsayılanı 23'tü; react-native-vision-camera v4 min API 26 ister.
         minSdkVersion = 26
-        compileSdkVersion = 34
+        // react-native-video 6.19 (media3 1.8) compileSdk 35 ister; AGP 8.2.1 uyarısı
+        // gradle.properties'teki android.suppressUnsupportedCompileSdk=35 ile bastırılır.
+        compileSdkVersion = 35
         targetSdkVersion = 34
         ndkVersion = "26.1.10909125"
         kotlinVersion = "1.9.22"
