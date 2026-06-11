@@ -158,8 +158,8 @@
 - [x] Entity: Conversation, Message, Assistant (+ConversationParticipant) — `ChatEntities` migration; mesajlar kalıcı (AI cevapları dahil — denetlenebilirlik), read_by jsonb
 - [x] Backend: conversations/messages/assistants uçları — `ChatController` (§10 birebir); direct konuşma aynı ikili için tekilleştirilir; asistan oluşturma yalnız CompanyAdmin (PRD §17.2); persona listelerde dönmez (prompt sızmaz); kullanıcı arama aynı tenant
 - [x] Gemini entegrasyonu (backend; anahtar backend'de; PII'siz prompt) — `GeminiClient` (generateContent, anahtar yalnız URL'de, loglanmaz) + persona'ya kurumsal PII sınır cümlesi; Gemini hatasında kullanıcı mesajı kayıtlı kalır, PROVIDER_UNAVAILABLE döner; 8 test (fake Gemini)
-- [ ] Mobile: sohbet listesi, birebir sohbet, AI sohbet (yazıyor...), AI asistan oluştur, kullanıcı arama
-- [ ] Offline mesaj kuyruğu
+- [x] Mobile: sohbet listesi, birebir sohbet, AI sohbet (yazıyor...), kullanıcı arama — `ChatStack`: liste (son mesaj+saat+okunmamış rozeti, AI rozeti), `ConversationScreen` (balonlar, AssistantTyping="yazıyor…", okundu işaretleme, canlı hub + REST geçmiş birleşimi), `NewChatScreen` (asistan listesi + firma içi isim arama). AI asistan OLUŞTURMA mobilde yok — PRD §17.2 kararı: firma admin tanımlar (web/admin işi; uç hazır)
+- [x] Offline mesaj kuyruğu — `chatHub` (tek bağlantı, @microsoft/signalr): bağlantı yokken outbox'a alınır, yeniden bağlanınca gruplara katılım + sırayla gönderim; ekranda "çevrimdışı" bandı. Kuyruk oturum-içi (kalıcı saklama Faz sonrası)
 
 ### 2.4 İK modülleri
 - [x] Entity: LeaveRequest, ExpenseRequest (+durum/onay alanları: DecidedBy/DecidedAt/DecisionNote; tutar numeric(18,2))

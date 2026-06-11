@@ -30,6 +30,13 @@ export type BenefitsStackParamList = {
   BenefitItems: { kind: 'coupons' | 'giftcards' };
 };
 
+/** Sohbet stack'i (PRD §9) — liste + konuşma + yeni sohbet. */
+export type ChatStackParamList = {
+  ChatList: undefined;
+  Conversation: { id: string; title: string; isAssistant: boolean };
+  NewChat: undefined;
+};
+
 /** Diğer sekmesi stack'i (PRD §10) — modül grid + İK ekranları. */
 export type OtherStackParamList = {
   ModulesGrid: undefined;

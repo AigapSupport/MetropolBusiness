@@ -361,5 +361,22 @@
                                     "viewReceipt":  "Fişi Görüntüle",
                                     "unknownRequester":  "Çalışan"
                                 }
-              }
+              },
+    "chat":  {
+                 "subtitle":  "Mesajlar \u0026 asistanlar",
+                 "new":  "Yeni",
+                 "newTitle":  "Yeni Sohbet",
+                 "empty":  "Henüz sohbet yok. Yeni bir sohbet başlatın.",
+                 "noMessages":  "Mesaj yok",
+                 "aiBadge":  "AI",
+                 "assistantTyping":  "yazıyor…",
+                 "inputPlaceholder":  "Mesaj yazın",
+                 "send":  "Gönder",
+                 "offlineQueue":  "Çevrimdışısınız — mesajlar bağlanınca gönderilecek.",
+                 "startConversation":  "İlk mesajı gönderin.",
+                 "assistantsHeader":  "AI ASİSTANLAR",
+                 "peopleHeader":  "KİŞİLER",
+                 "searchPlaceholder":  "İsim ara…",
+                 "searchHint":  "Firma içinden kişi aramak için yazın."
+             }
 }

@@ -361,5 +361,22 @@
                                     "viewReceipt":  "View Receipt",
                                     "unknownRequester":  "Employee"
                                 }
-              }
+              },
+    "chat":  {
+                 "subtitle":  "Messages \u0026 assistants",
+                 "new":  "New",
+                 "newTitle":  "New Chat",
+                 "empty":  "No chats yet. Start a new one.",
+                 "noMessages":  "No messages",
+                 "aiBadge":  "AI",
+                 "assistantTyping":  "typing…",
+                 "inputPlaceholder":  "Type a message",
+                 "send":  "Send",
+                 "offlineQueue":  "You are offline — messages will be sent when reconnected.",
+                 "startConversation":  "Send the first message.",
+                 "assistantsHeader":  "AI ASSISTANTS",
+                 "peopleHeader":  "PEOPLE",
+                 "searchPlaceholder":  "Search name…",
+                 "searchHint":  "Type to search people in your company."
+             }
 }

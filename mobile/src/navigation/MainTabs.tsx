@@ -7,7 +7,7 @@ import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { useTranslation } from 'react-i18next';
 
 import { BenefitsStack } from '@/navigation/BenefitsStack';
-import { ChatScreen } from '@/screens/Chat/ChatScreen';
+import { ChatStack } from '@/navigation/ChatStack';
 import { OtherStack } from '@/navigation/OtherStack';
 import { useTheme } from '@/theme/ThemeProvider';
 
@@ -47,7 +47,7 @@ export function MainTabs() {
         component={MetropolStack}
         options={{ tabBarLabel: t('tabs.metropol') }}
       />
-      <Tab.Screen name="Chat" component={ChatScreen} options={{ tabBarLabel: t('tabs.chat') }} />
+      <Tab.Screen name="Chat" component={ChatStack} options={{ tabBarLabel: t('tabs.chat') }} />
       <Tab.Screen name="Other" component={OtherStack} options={{ tabBarLabel: t('tabs.other') }} />
     </Tab.Navigator>
   );
