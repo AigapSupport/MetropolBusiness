@@ -8,6 +8,7 @@ using MetropolBusiness.Integration.Gemini;
 using MetropolBusiness.Integration.Metropol;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -95,6 +96,24 @@ builder.Services.AddMetropolIntegration();
 builder.Services.AddGeminiIntegration();
 
 var app = builder.Build();
+
+// Deploy migration adımı (aigap-deploy-template MIGRATE_CMD):
+//   dotnet MetropolBusiness.Api.dll migrate  → migration'ları uygular ve ÇIKAR.
+// Ayrıca Database:MigrateOnStartup=true ile normal açılışta da uygulanabilir
+// (tek-instance VPS için; çok-instance dağıtımda yalnız migrate komutu kullanılır).
+var migrateOnly = args.Contains("migrate");
+if (migrateOnly || builder.Configuration.GetValue<bool>("Database:MigrateOnStartup"))
+{
+    using var migrationScope = app.Services.CreateScope();
+    var dbContext = migrationScope.ServiceProvider
+        .GetRequiredService<MetropolBusiness.Infrastructure.Persistence.AppDbContext>();
+    dbContext.Database.Migrate();
+    app.Logger.LogInformation("Veritabanı migration'ları uygulandı.");
+    if (migrateOnly)
+    {
+        return;
+    }
+}
 
 app.UseMiddleware<ExceptionHandlingMiddleware>();
 

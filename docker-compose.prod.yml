@@ -1,0 +1,136 @@
+# ============================================================
+# MetropolBusiness — production stack (aigap-deploy-template deseni)
+#
+# Paylaşılan VPS: Traefik 80/443'ü tutar, hostname'e göre yönlendirir.
+# Servisler PORT AÇMAZ; dışarı açılacaklar 'edge' ağına katılır ve
+# scripts/traefik-route.sh ile route eklenir:
+#   api.DOMAIN    → metropolbusiness-app:8080   (mobil + SignalR)
+#   panel.DOMAIN  → metropolbusiness-panel:80   (firma yönetim paneli)
+#   yonetim.DOMAIN→ metropolbusiness-admin:80   (platform paneli)
+# Paneller /api'yi kendi nginx'lerinden app'e proxy'ler (CORS gerekmez).
+# ============================================================
+name: metropolbusiness-prod
+
+services:
+  db:
+    image: postgres:16-alpine
+    container_name: metropolbusiness-postgres
+    restart: always
+    environment:
+      POSTGRES_USER: ${DB_USER}
+      POSTGRES_PASSWORD: ${DB_PASSWORD}
+      POSTGRES_DB: ${DB_NAME}
+    volumes:
+      - db_data:/var/lib/postgresql/data
+    networks: [internal]
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USER} -d ${DB_NAME}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    logging: { driver: "json-file", options: { max-size: "10m", max-file: "3" } }
+
+  redis:
+    image: redis:7-alpine
+    container_name: metropolbusiness-redis
+    restart: always
+    volumes:
+      - redis_data:/data
+    networks: [internal]
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    logging: { driver: "json-file", options: { max-size: "10m", max-file: "3" } }
+
+  # --- API (mobil doğrudan, paneller nginx proxy ile ulaşır) ---
+  app:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    image: metropolbusiness-app:${IMAGE_TAG:-latest}
+    container_name: metropolbusiness-app
+    restart: always
+    environment:
+      ASPNETCORE_ENVIRONMENT: Production
+      # appsettings.json'daki localhost Kestrel ucunu ezer (konteyner içi 0.0.0.0).
+      Kestrel__Endpoints__Http__Url: http://0.0.0.0:8080
+      ConnectionStrings__Postgres: Host=db;Port=5432;Database=${DB_NAME};Username=${DB_USER};Password=${DB_PASSWORD}
+      Redis__Enabled: "true"
+      Redis__Configuration: redis:6379
+      Jwt__Issuer: metropolbusiness
+      Jwt__Audience: metropolbusiness-clients
+      Jwt__SigningKey: ${JWT_SIGNING_KEY}
+      Auth__DevFixedOtp: ""            # üretimde sabit OTP YOK
+      Metropol__AuthBaseUrl: ${METROPOL_AUTH_URL}
+      Metropol__ApiBaseUrl: ${METROPOL_API_URL}
+      Metropol__AccessKey: ${METROPOL_ACCESS_KEY}
+      Metropol__AesKey: ${METROPOL_AES_KEY}
+      Metropol__ConsumerId: ${METROPOL_CONSUMER_ID}
+      Metropol__ConsumerName: ${METROPOL_CONSUMER_NAME}
+      Gemini__ApiKey: ${GEMINI_API_KEY}
+      # Migration deploy.sh MIGRATE_CMD ile uygulanır; açılışta tekrar denenmez.
+      Database__MigrateOnStartup: "false"
+    depends_on:
+      db: { condition: service_healthy }
+      redis: { condition: service_healthy }
+    networks: [internal, edge]
+    expose: ["8080"]
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:8080/health"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 30s
+    logging: { driver: "json-file", options: { max-size: "10m", max-file: "5" } }
+
+  # --- Firma yönetim paneli (web/) ---
+  panel:
+    build:
+      context: .
+      dockerfile: web/Dockerfile
+    image: metropolbusiness-panel:${IMAGE_TAG:-latest}
+    container_name: metropolbusiness-panel
+    restart: always
+    depends_on: [app]
+    networks: [internal, edge]
+    expose: ["80"]
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost/health"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+    logging: { driver: "json-file", options: { max-size: "10m", max-file: "3" } }
+
+  # --- Platform (Metropol) admin paneli (admin/) ---
+  adminpanel:
+    build:
+      context: .
+      dockerfile: admin/Dockerfile
+    image: metropolbusiness-admin:${IMAGE_TAG:-latest}
+    container_name: metropolbusiness-admin
+    restart: always
+    depends_on: [app]
+    networks: [internal, edge]
+    expose: ["80"]
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost/health"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+    logging: { driver: "json-file", options: { max-size: "10m", max-file: "3" } }
+
+networks:
+  internal:
+    driver: bridge
+  # Paylaşılan Traefik ağı — VPS'te dışarıda tanımlı.
+  edge:
+    external: true
+    name: ${TRAEFIK_NETWORK:-aigap-prod_aigap-net}
+
+volumes:
+  db_data:
+    driver: local
+  redis_data:
+    driver: local

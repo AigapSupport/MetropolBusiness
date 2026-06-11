@@ -1,0 +1,18 @@
+# web/admin imaj build'leri repo kökünü bağlam alır (shared/ gerektiği için) —
+# bağlamı küçük tut: yalnızca shared/ + web/ + admin/ kaynakları gerekir.
+.git/
+.github/
+backend/
+mobile/
+design/
+docs/
+infra/
+nginx/
+scripts/
+node_modules/
+**/node_modules/
+**/dist/
+**/.vite/
+*.md
+.env*
+!*/.env.example
