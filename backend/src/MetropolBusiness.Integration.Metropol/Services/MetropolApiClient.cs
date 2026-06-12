@@ -122,6 +122,13 @@ public sealed class MetropolApiClient(
         message.Headers.Authorization = new AuthenticationHeaderValue("Bearer", token);
 
         using var response = await httpClient.SendAsync(message, ct);
+        if (response.StatusCode == System.Net.HttpStatusCode.NotFound)
+        {
+            // Uç bu ortamda yok (v2 yolları test sunucusunda 404 — LESSONS 2026-06-12);
+            // jenerik 500 yerine middleware'de 503 PROVIDER_UNAVAILABLE'a çevrilir.
+            throw new MetropolEndpointUnavailableException(endpoint);
+        }
+
         response.EnsureSuccessStatusCode();
 
         var result = await response.Content.ReadFromJsonAsync<TResponse>(JsonOptions, ct);
