@@ -168,3 +168,28 @@ Kurulum BAŞARILI: 5 container healthy, 7 migration uygulandı, 3 Traefik route 
 - **Batch dosyaları CRLF ister**: Write tool LF yazar; .bat'ı PowerShell `Set-Content -Encoding Ascii` ile üret.
 - **sdkmanager --licenses stdin'den "y" almıyor** (PowerShell pipe → .bat): lisanslar `$ANDROID_HOME/licenses/android-sdk-license` dosyasına bilinen hash'ler yazılarak kabul edilir (CI standardı).
 - Araç zinciri admin'siz kuruldu: Temurin JDK 17 + cmdline-tools → `C:\Users\support.aigap\tools\{jdk-17.0.19+10, android-sdk}`; build betiği `mobile/android/build-apk.bat` (git'e girmez).
+
+---
+
+## 2026-06-12 — Metropol canlı bağlantı: keep-alive tuzağı + doğrulanan varsayımlar
+
+**Belirti:** Gerçek test sırlarıyla ilk Metropol çağrıları `connection reset by peer` (500). wget/curl/openssl aynı konteynerden sorunsuz; saf .NET repro da TLS 1.2/1.3, UA''lı/UA''sız, chunked/content-length tüm varyantlarda BAŞARILI.
+
+**Kök neden (repro ile kanıtlı):** Metropol sunucuları her yanıttan sonra TCP bağlantısını `Connection: close` GÖNDERMEDEN kesiyor. .NET, havuzdaki bağlantıyı ikinci istekte yeniden kullanınca RST yiyor: aynı HttpClient ile `GET getdate → POST GenerateToken` dizisi %100 reset üretti; ayrı bağlantılarla aynı istekler sorunsuz. POST idempotent olmadığından .NET kendiliğinden retry de yapmıyor (doğru davranış).
+
+**Çözüm:** İki Metropol HttpClient''ında keep-alive kapatıldı (`DefaultRequestHeaders.ConnectionClose = true`, DependencyInjection.cs). Maliyet: istek başına TLS el sıkışması (~100 ms) — kabul edilebilir; ileride sorun olursa Metropol''le keep-alive davranışı konuşulur. (Önce denenen TLS 1.2 sabitlemesi gereksizdi, geri alındı.)
+
+**Teşhis yöntemi (tekrar lazım olursa):** SDK konteynerinde minimal HttpClient programı → aynı imaj/ağ/canlı konteyner içinde sırayla çalıştır; değişkenleri tek tek ele (TLS sürümü, UA, chunked, bağlantı yeniden kullanımı).
+
+**Bu süreçte DOĞRULANAN varsayımlar (gerçek test ortamı, 2026-06-12):**
+- AES anahtarı 16 karakter ASCII/UTF-8 → şifreleme kabul edildi ✓ (GenerateToken token verdi)
+- `getdate` yanıtı DÜZ METİN ISO tarih (`2026-06-12T09:47:47.96Z` biçimi) ✓
+- RefNo: Metropol onboarding''de SABİT değer veriyor (21316) → `Metropol:RefNo` yapılandırması eklendi; boşsa eski davranış (istek başına GUID)
+- Bearer token API host''unda (testapi) kabul ediliyor ✓ — uçlar iş-kuralı koduna kadar gidiyor
+
+**Açık Metropol soruları (cevap bekleniyor):**
+- `merchantlist` her parametre kombinasyonunda **ResponseCode 90000** dönüyor (sectorId/listType 0/1/2 denendi). Test hesabı (ConsumerId 321414) bu uca yetkili mi? 90000''in anlamı ne?
+- **74652** kodu: geçersiz/yabancı UserAccountToken''lı BalanceQuery''de döndü (beklenen — sahte demo token''dı). Anlamı teyit edilirse MetropolErrorCatalog''a eklenecek.
+- Sonraki uçtan uca test: gerçek kart numarasıyla AddAccount/Confirm akışı (SMS gerçek kart telefonuna gider) → MemberId 32-hex kabulü + kart token saklama + gerçek bakiye o testte doğrulanacak.
+
+**Not:** ConsumerName "AıGap_Test" (Türkçe ı) — env üzerinden UTF-8 geçiyor, System.Text.Json ı olarak kaçışlıyor; sorun çıkarmadı.
