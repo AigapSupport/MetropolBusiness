@@ -60,8 +60,14 @@ public sealed class MetropolApiClient(
     public Task<BalanceTransferResponse> BalanceTransferAsync(BalanceTransferRequest request, CancellationToken ct = default) =>
         PostAsync<BalanceTransferRequest, BalanceTransferResponse>(ApiEndpoints.BalanceTransfer, request, ct);
 
-    public Task<MerchantListResponse> MerchantListAsync(MerchantListRequest request, CancellationToken ct = default) =>
-        PostAsync<MerchantListRequest, MerchantListResponse>(ApiEndpoints.MerchantList, request, ct);
+    public Task<MerchantListResponse> MerchantListAsync(MerchantListRequest request, CancellationToken ct = default)
+    {
+        // LastListVersionDate sözleşmede internal set'lidir ve null serileşiyordu;
+        // Metropol tarafı null'da "Beklenmedik bir hata" (90000) dönebildiği için
+        // boş string'e normalize edilir (alan adı/tipi DEĞİŞMEZ — CLAUDE.md kural 6).
+        request.LastListVersionDate ??= string.Empty;
+        return PostAsync<MerchantListRequest, MerchantListResponse>(ApiEndpoints.MerchantList, request, ct);
+    }
 
     public Task<SendOtpResponse> SendOtpAsync(SendOtpRequest request, CancellationToken ct = default) =>
         PostAsync<SendOtpRequest, SendOtpResponse>(ApiEndpoints.SendOtp, request, ct);
