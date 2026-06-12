@@ -1,5 +1,3 @@
-using System.Net.Security;
-using System.Security.Authentication;
 using MetropolBusiness.Integration.Metropol.Services;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
@@ -10,18 +8,16 @@ namespace MetropolBusiness.Integration.Metropol;
 public static class DependencyInjection
 {
     /// <summary>
-    /// Metropol test sunucuları .NET'in varsayılan (TLS 1.3 içeren) ClientHello'suna
-    /// "connection reset by peer" dönüyor; wget/openssl aynı konteynerden sorunsuz.
-    /// TLS 1.2'ye sabitlenir (2026-06-12 tespiti, LESSONS.md).
+    /// Metropol sunucuları her yanıttan sonra TCP bağlantısını 'Connection: close'
+    /// GÖNDERMEDEN öldürüyor; .NET havuzdaki bağlantıyı ikinci istekte yeniden
+    /// kullanınca "connection reset by peer" alınıyor (2026-06-12 repro: aynı client'la
+    /// GET getdate → POST GenerateToken = RST; ayrı bağlantılarla ikisi de OK, LESSONS.md).
+    /// Keep-alive kapatılır: her istek kendi bağlantısını açar. POST'lar idempotent
+    /// olmadığından .NET bu durumda kendiliğinden retry YAPMAZ — bu yüzden havuz
+    /// ayarıyla değil istek başlığıyla çözülür.
     /// </summary>
-    private static SocketsHttpHandler CreateMetropolHandler() => new()
-    {
-        SslOptions = new SslClientAuthenticationOptions
-        {
-            EnabledSslProtocols = SslProtocols.Tls12,
-        },
-        PooledConnectionLifetime = TimeSpan.FromMinutes(5),
-    };
+    private static void DisableKeepAlive(HttpClient client) =>
+        client.DefaultRequestHeaders.ConnectionClose = true;
     /// <summary>
     /// Metropol entegrasyon kayıtları: iki ayrı HttpClient (auth + api base URL'leri,
     /// CLAUDE.md §6), token servisi ve tipli API client.
@@ -39,7 +35,8 @@ public static class DependencyInjection
             var options = provider.GetRequiredService<IOptions<MetropolOptions>>().Value;
             client.BaseAddress = new Uri(options.AuthBaseUrl);
             client.Timeout = TimeSpan.FromSeconds(15);
-        }).ConfigurePrimaryHttpMessageHandler(CreateMetropolHandler);
+            DisableKeepAlive(client);
+        });
 
         services.AddScoped<MetropolTokenService>();
 
@@ -51,7 +48,8 @@ public static class DependencyInjection
             var options = provider.GetRequiredService<IOptions<MetropolOptions>>().Value;
             client.BaseAddress = new Uri(options.ApiBaseUrl);
             client.Timeout = TimeSpan.FromSeconds(30);
-        }).ConfigurePrimaryHttpMessageHandler(CreateMetropolHandler);
+            DisableKeepAlive(client);
+        });
 
         return services;
     }
