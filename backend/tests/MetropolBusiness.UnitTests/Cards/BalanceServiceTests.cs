@@ -92,9 +92,13 @@ public sealed class BalanceServiceTests : IDisposable
         var result = await service.GetBalanceAsync(_cardA, walletId: null, forceRefresh: false);
 
         Assert.True(result.IsSuccess);
-        Assert.Equal(2, result.Value.Wallets.Count);
+        // KARAR 2026-06-12: 4 kanonik cüzdan HER ZAMAN döner; yanıtta olmayanlar 0.00.
+        Assert.Equal(4, result.Value.Wallets.Count);
         Assert.Equal("30824.00", result.Value.Wallets[0].Balance);
-        Assert.Equal("RESTO", result.Value.Wallets[0].WalletName);
+        Assert.Equal("RESTO", result.Value.Wallets[0].WalletName); // yanıttaki ad katalog adını ezer
+        Assert.Equal("0.00", result.Value.Wallets.Single(w => w.WalletId == 2).Balance);
+        Assert.Equal("MARKET", result.Value.Wallets.Single(w => w.WalletId == 2).WalletName);
+        Assert.Equal("0.00", result.Value.Wallets.Single(w => w.WalletId == 4).Balance);
         Assert.Equal("75405.00", result.Value.TotalBalance);
 
         // Upstream isteği: ÇÖZÜLMÜŞ token + token türü (2) + tüm cüzdanlar (0) —
@@ -185,9 +189,10 @@ public sealed class BalanceServiceTests : IDisposable
         {
             var rows = verify.CardBalances.AsNoTracking()
                 .Where(cb => cb.CardId == _cardA).ToList();
-            Assert.Equal(2, rows.Count);
+            Assert.Equal(4, rows.Count); // 4 kanonik cüzdan (olmayanlar 0.00 ile)
             Assert.Equal(30824.00m, rows.Single(r => r.WalletId == 1).Balance);
             Assert.Equal("RESTO", rows.Single(r => r.WalletId == 1).WalletName);
+            Assert.Equal(0m, rows.Single(r => r.WalletId == 2).Balance);
         }
 
         // İkinci TAZE sorgu (refresh=true): aynı cüzdanlar güncellenir, satır çoğalmaz.
@@ -207,7 +212,7 @@ public sealed class BalanceServiceTests : IDisposable
         using var verifyAfter = CreateContext(TenantA, _userA1);
         var updated = verifyAfter.CardBalances.AsNoTracking()
             .Where(cb => cb.CardId == _cardA).ToList();
-        Assert.Equal(2, updated.Count); // UNIQUE(card_id, wallet_id): upsert, insert değil
+        Assert.Equal(4, updated.Count); // UNIQUE(card_id, wallet_id): upsert, insert değil
         Assert.Equal(100.00m, updated.Single(r => r.WalletId == 1).Balance);
         Assert.Equal(200.00m, updated.Single(r => r.WalletId == 3).Balance);
     }
@@ -228,7 +233,7 @@ public sealed class BalanceServiceTests : IDisposable
 
         Assert.True(result.IsSuccess); // PROVIDER_UNAVAILABLE yutulur, 200 + stale
         Assert.True(result.Value.Stale);
-        Assert.Equal(2, result.Value.Wallets.Count);
+        Assert.Equal(4, result.Value.Wallets.Count); // snapshot da 4 kanonik cüzdanı taşır
         Assert.Equal("30824.00", result.Value.Wallets[0].Balance);
         Assert.Equal("75405.00", result.Value.TotalBalance);
 
@@ -285,13 +290,13 @@ public sealed class BalanceServiceTests : IDisposable
         var result = await service.GetBalanceAsync(_cardA, null, forceRefresh: false);
 
         Assert.True(result.IsSuccess);
-        Assert.Equal(2, result.Value.Wallets.Count); // cüzdan başına TEK satır
+        Assert.Equal(4, result.Value.Wallets.Count); // cüzdan başına TEK satır (4 kanonik)
         Assert.Equal("150.00", result.Value.Wallets.Single(w => w.WalletId == 1).Balance);
         Assert.Equal("160.00", result.Value.TotalBalance);
 
         // DB snapshot'ında da cüzdan başına tek satır (unique index ihlali yok).
         using var verify = CreateContext(TenantA, _userA1);
-        Assert.Equal(2, verify.CardBalances.AsNoTracking().Count(cb => cb.CardId == _cardA));
+        Assert.Equal(4, verify.CardBalances.AsNoTracking().Count(cb => cb.CardId == _cardA));
     }
 
     // (c2) Token ÇÖZÜLEMİYORSA (bozuk kayıt/anahtar rotasyonu) snapshot varsa stale döner —

@@ -33,6 +33,16 @@ public sealed class BalanceService(
     /// <summary>Bakiye cache süresi (PRD §17.7: ~30 sn — para verisinde tazelik önceliği).</summary>
     private static readonly TimeSpan BalanceCacheTtl = TimeSpan.FromSeconds(30);
 
+    /// <summary>
+    /// Kanonik cüzdanlar (KARAR 2026-06-12, gerçek kart verisinden): 1=RESTORAN,
+    /// 3=GIYIM, 4=MARKET20 canlıda görüldü; 2=MARKET varsayım (LESSONS.md) — yanıt
+    /// kendi adını getirirse o kullanılır. Eski "1=Resto, 3=Gift" eşlemesi geçersiz.
+    /// </summary>
+    private static readonly (int Id, string Name)[] CanonicalWallets =
+    [
+        (1, "RESTORAN"), (2, "MARKET"), (3, "GIYIM"), (4, "MARKET20"),
+    ];
+
     private static readonly JsonSerializerOptions JsonWeb = new(JsonSerializerDefaults.Web);
 
     private static readonly Error CardNotFoundError = new(
@@ -173,7 +183,7 @@ public sealed class BalanceService(
         // Metropol aynı cüzdan (WalletId) için BİRDEN ÇOK satır dönebiliyor (gerçek
         // kartta görüldü, 2026-06-12: upsert unique index 23505 fırlattı). Sözleşmemiz
         // cüzdan başına TEK satırdır → tutarlar toplanır, ad ilk dolu değerden alınır.
-        var balances = (response.UserBalance ?? [])
+        var grouped = (response.UserBalance ?? [])
             .GroupBy(w => w.WalletId)
             .Select(g => new UserBalance
             {
@@ -182,6 +192,16 @@ public sealed class BalanceService(
                     .FirstOrDefault(n => !string.IsNullOrWhiteSpace(n)) ?? string.Empty,
                 Balance = g.Sum(w => w.Balance),
             })
+            .ToList();
+
+        // KARAR 2026-06-12: 4 kanonik cüzdan HER ZAMAN döner — yanıtta olmayan 0.00
+        // gösterilir (istemci toplam yerine cüzdan kartlarını listeler). Yanıttaki ad
+        // katalog adını EZER; katalogda olmayan ek cüzdanlar da aynen korunur.
+        var balances = CanonicalWallets
+            .Select(c => grouped.FirstOrDefault(w => w.WalletId == c.Id)
+                ?? new UserBalance { WalletId = c.Id, WalletName = c.Name, Balance = 0m })
+            .Concat(grouped.Where(w => CanonicalWallets.All(c => c.Id != w.WalletId)))
+            .OrderBy(w => w.WalletId)
             .ToList();
         var asOf = await UpsertSnapshotAsync(cardId, balances, cancellationToken);
 

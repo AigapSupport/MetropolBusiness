@@ -39,7 +39,6 @@ import { clipboardModule } from '@/utils/nativeModules';
 
 import { CardVisual } from './components/CardVisual';
 import { TxRow } from './components/TxRow';
-import { MARKET_WALLET_ID, RESTAURANT_WALLET_ID } from './wallets';
 
 type Props = NativeStackScreenProps<MetropolStackParamList, 'MetropolHome'>;
 
@@ -260,12 +259,17 @@ export function MetropolHomeScreen({ navigation }: Props) {
   };
 
   const wallets = balanceQuery.data?.wallets ?? [];
-  const restaurantBalance =
-    wallets.find((wallet) => wallet.walletId === RESTAURANT_WALLET_ID)?.balance ?? null;
-  const marketBalance =
-    wallets.find((wallet) => wallet.walletId === MARKET_WALLET_ID)?.balance ?? null;
   const balanceLoading =
     balanceQuery.isPending || balanceQuery.isRefetching || refreshBalance.isPending;
+
+  // KARAR 2026-06-12: TOPLAM gösterilmez; backend 4 kanonik cüzdanı her zaman döner
+  // (olmayan 0.00) — kartlar cüzdan listesinden türetilir, renk sırayla atanır.
+  const walletAccents = [
+    theme.colors.brand,
+    theme.colors.success,
+    theme.colors.navy,
+    theme.colors.danger,
+  ];
 
   const recentItems = recentQuery.data?.items ?? [];
   const refreshing = cardsQuery.isRefetching;
@@ -402,7 +406,7 @@ export function MetropolHomeScreen({ navigation }: Props) {
               ))}
             </View>
 
-            {/* bakiye kartları — TOPLAM / RESTORAN / MARKET (wallets'tan türetilir) */}
+            {/* bakiye kartları — cüzdan başına bir kart (TOPLAM yok; karar 2026-06-12) */}
             <ScrollView
               horizontal
               showsHorizontalScrollIndicator={false}
@@ -412,25 +416,26 @@ export function MetropolHomeScreen({ navigation }: Props) {
                 marginTop: theme.spacing.lg,
               }}
             >
-              <BalancePill
-                label={t('metropol.balance.total')}
-                amount={balanceQuery.data?.totalBalance ?? null}
-                accent={theme.colors.navy}
-                loading={balanceLoading}
-                onRefresh={handleRefreshBalance}
-              />
-              <BalancePill
-                label={t('metropol.balance.restaurant')}
-                amount={restaurantBalance}
-                accent={theme.colors.brand}
-                loading={balanceLoading}
-              />
-              <BalancePill
-                label={t('metropol.balance.market')}
-                amount={marketBalance}
-                accent={theme.colors.success}
-                loading={balanceLoading}
-              />
+              {wallets.length === 0 ? (
+                <BalancePill
+                  label={t('metropol.balance.restaurant')}
+                  amount={null}
+                  accent={theme.colors.brand}
+                  loading={balanceLoading}
+                  onRefresh={handleRefreshBalance}
+                />
+              ) : (
+                wallets.map((wallet, index) => (
+                  <BalancePill
+                    key={wallet.walletId}
+                    label={wallet.walletName ?? String(wallet.walletId)}
+                    amount={wallet.balance}
+                    accent={walletAccents[index % walletAccents.length]}
+                    loading={balanceLoading}
+                    onRefresh={index === 0 ? handleRefreshBalance : undefined}
+                  />
+                ))
+              )}
             </ScrollView>
 
             {/* aksiyonlar */}
