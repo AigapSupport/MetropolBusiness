@@ -44,8 +44,9 @@ export function HistoryScreen({ navigation, route }: Props) {
   const cardsQuery = useCards();
   const cards = cardsQuery.data?.items ?? [];
 
-  const [selectedCardId, setSelectedCardId] = useState<string | null>(route.params.cardId ?? null);
-  const cardId = selectedCardId ?? cards[0]?.id ?? null;
+  // 'all' = tüm kartların birleşik geçmişi (GET /metropol/transactions, KARAR 2026-06-12).
+  const [selectedCardId, setSelectedCardId] = useState<string>(route.params.cardId ?? 'all');
+  const cardId = selectedCardId;
 
   const [preset, setPreset] = useState<RangePreset>(null);
   const range = preset === null ? {} : { startDate: isoDaysAgo(preset) };
@@ -63,46 +64,54 @@ export function HistoryScreen({ navigation, route }: Props) {
     <SafeAreaView edges={['top']} style={[styles.flex1, { backgroundColor: theme.colors.bg }]}>
       <ScreenHeader title={t('metropol.actions.history')} onBack={() => navigation.goBack()} />
 
-      {/* kart seçimi (birden çok kart varsa) */}
-      {cards.length > 1 ? (
-        <ScrollView
-          horizontal
-          showsHorizontalScrollIndicator={false}
-          contentContainerStyle={{
-            paddingHorizontal: theme.spacing.lg,
-            paddingTop: theme.spacing.md,
-            gap: theme.spacing.sm,
-          }}
-        >
-          {cards.map((card) => {
-            const active = cardId === card.id;
-            return (
-              <Pressable
-                key={card.id}
-                onPress={() => setSelectedCardId(card.id)}
-                accessibilityRole="button"
-                style={{
-                  paddingHorizontal: theme.spacing.md,
-                  paddingVertical: theme.spacing.sm,
-                  borderRadius: 999,
-                  borderWidth: 1.5,
-                  borderColor: active ? theme.colors.brand : theme.colors.line,
-                  backgroundColor: active ? theme.colors.brandSoft : theme.colors.card,
-                }}
-              >
-                <Text
+      {/* kart seçimi: "Tümü" + kart başına bir çip (kart no çipe TAM sığar) */}
+      {cards.length > 0 ? (
+        <View>
+          <ScrollView
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            contentContainerStyle={{
+              paddingHorizontal: theme.spacing.lg,
+              paddingTop: theme.spacing.md,
+              gap: theme.spacing.sm,
+            }}
+          >
+            {[{ id: 'all', label: t('metropol.history.rangeAll') } as const,
+              ...cards.map((card) => ({ id: card.id, label: card.maskedCardNo })),
+            ].map((chip) => {
+              const active = cardId === chip.id;
+              return (
+                <Pressable
+                  key={chip.id}
+                  onPress={() => setSelectedCardId(chip.id)}
+                  accessibilityRole="button"
                   style={{
-                    fontSize: theme.fontSize.xs + 1,
-                    fontWeight: '700',
-                    color: active ? theme.colors.brand : theme.colors.ink2,
+                    paddingHorizontal: theme.spacing.lg,
+                    paddingVertical: theme.spacing.sm + 2,
+                    borderRadius: 999,
+                    borderWidth: 1.5,
+                    borderColor: active ? theme.colors.brand : theme.colors.line,
+                    backgroundColor: active ? theme.colors.brandSoft : theme.colors.card,
+                    justifyContent: 'center',
                   }}
                 >
-                  {card.maskedCardNo}
-                </Text>
-              </Pressable>
-            );
-          })}
-        </ScrollView>
+                  <Text
+                    numberOfLines={1}
+                    style={{
+                      fontSize: theme.fontSize.sm,
+                      fontWeight: '700',
+                      // Maskeli kart no rakam+yıldız: eşit aralıklı rakam çipe düzgün oturur.
+                      fontVariant: ['tabular-nums'],
+                      color: active ? theme.colors.brand : theme.colors.ink2,
+                    }}
+                  >
+                    {chip.label}
+                  </Text>
+                </Pressable>
+              );
+            })}
+          </ScrollView>
+        </View>
       ) : null}
 
       {/* tarih aralığı filtresi */}
@@ -145,13 +154,7 @@ export function HistoryScreen({ navigation, route }: Props) {
         })}
       </View>
 
-      {cardId === null ? (
-        <View style={[styles.centered, { padding: theme.spacing.xl }]}>
-          <Text style={{ color: theme.colors.ink3, fontSize: theme.fontSize.md, textAlign: 'center' }}>
-            {t('metropol.emptySubtitle')}
-          </Text>
-        </View>
-      ) : transactions.isPending ? (
+      {transactions.isPending ? (
         <ActivityIndicator color={theme.colors.brand} style={{ marginTop: theme.spacing.xl }} />
       ) : transactions.isError ? (
         <View style={[styles.centered, { padding: theme.spacing.lg, gap: theme.spacing.sm }]}>

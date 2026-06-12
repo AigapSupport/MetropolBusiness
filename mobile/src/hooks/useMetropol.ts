@@ -118,28 +118,29 @@ export function useRecentTransactions(cardId: string | null) {
 
 const TRANSACTIONS_PAGE_SIZE = 20;
 
-/** Sayfalı işlem geçmişi (infinite) + tarih aralığı filtresi. */
+/**
+ * Sayfalı işlem geçmişi (infinite) + tarih aralığı filtresi.
+ * cardId='all' → tüm kartların birleşik geçmişi (KARAR 2026-06-12).
+ */
 export function useTransactionsInfinite(
-  cardId: string | null,
+  cardId: string,
   range: { startDate?: string; endDate?: string },
 ) {
   return useInfiniteQuery({
-    queryKey: metropolKeys.transactions(cardId ?? '', range),
+    queryKey: metropolKeys.transactions(cardId, range),
     queryFn: ({ pageParam }) => {
-      if (cardId === null) {
-        throw new Error('cardId yokken işlem geçmişi sorgulanamaz');
-      }
       const query: TransactionQuery = {
         page: pageParam,
         pageSize: TRANSACTIONS_PAGE_SIZE,
         ...range,
       };
-      return metropolApi.getTransactions(cardId, query);
+      return cardId === 'all'
+        ? metropolApi.getAllTransactions(query)
+        : metropolApi.getTransactions(cardId, query);
     },
     initialPageParam: 1,
     getNextPageParam: (lastPage) =>
       lastPage.page * lastPage.pageSize < lastPage.total ? lastPage.page + 1 : undefined,
-    enabled: cardId !== null,
   });
 }
 

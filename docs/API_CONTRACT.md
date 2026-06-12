@@ -243,6 +243,11 @@ Yanıt 201: `{ "cardId":"uuid", "maskedCardNo":"637******976", "name":"Test", "s
 
 ## 6. METROPOL — BAKİYE & İŞLEM
 
+### GET /metropol/transactions
+Kullanıcının TÜM kartlarının işlemleri birleşik (geçmiş ekranı "Tümü" seçeneği,
+KARAR 2026-06-12). Parametre ve zarf `/cards/{id}/transactions` ile aynı
+(`?page&pageSize&startDate&endDate`); tek kartın hatası listeyi düşürmez (atlanır).
+
 ### GET /metropol/cards/{cardId}/balance
 (BalanceQuery) `?walletId=1` opsiyonel; varsayılan tüm cüzdanlar.
 ```json

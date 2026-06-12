@@ -299,6 +299,68 @@ public sealed class BalanceServiceTests : IDisposable
         Assert.Equal(4, verify.CardBalances.AsNoTracking().Count(cb => cb.CardId == _cardA));
     }
 
+    // GERÇEK Metropol tarih biçimi (canlı veri 2026-06-12): "yyyyMMddHHmmss" → ISO'ya çevrilir.
+    [Fact]
+    public async Task Transactions_parse_compact_metropol_date_format()
+    {
+        _metropol.NextTransactionResponse.PaymentInfo =
+        [
+            new TransactionHistoryItem
+            {
+                TransactionId = 1, TranTypeId = 1, Amount = 100.00m,
+                TransactionDate = "20260612174347",
+            },
+        ];
+        var service = CreateBalanceService(TenantA, _userA1);
+
+        var result = await service.GetTransactionsAsync(_cardA, 1, 20, null, null);
+
+        Assert.True(result.IsSuccess);
+        Assert.Equal("2026-06-12T17:43:47Z", result.Value.Items.Single().Date);
+    }
+
+    // KARAR 2026-06-12: GET /metropol/transactions — kullanıcının TÜM kartları birleşik;
+    // tek kartın bozuk kaydı listeyi düşürmez (atlanır).
+    [Fact]
+    public async Task All_transactions_merge_across_users_cards_and_skip_broken_cards()
+    {
+        _metropol.NextTransactionResponse.PaymentInfo =
+        [
+            new TransactionHistoryItem
+            {
+                TransactionId = 1, TranTypeId = 1, Amount = 50.00m,
+                TransactionDate = "20260612120000",
+            },
+        ];
+
+        // userA1'e ikinci kart + üçüncü BOZUK (çözülemeyen token) kart eklenir.
+        using (var seed = CreateContext(TenantA, _userA1))
+        {
+            seed.Cards.AddRange(
+                new Card
+                {
+                    TenantId = TenantA, UserId = _userA1,
+                    UserAccountTokenEncrypted = _cipher.Encrypt("IKINCI-KART-TOKEN"),
+                    MaskedCardNo = "637******222",
+                },
+                new Card
+                {
+                    TenantId = TenantA, UserId = _userA1,
+                    UserAccountTokenEncrypted = "BOZUK-KAYIT",
+                    MaskedCardNo = "637******333",
+                });
+            seed.SaveChanges();
+        }
+
+        var service = CreateBalanceService(TenantA, _userA1);
+        var result = await service.GetAllTransactionsAsync(1, 20, null, null);
+
+        Assert.True(result.IsSuccess);
+        // 2 sağlam kart × 1'er işlem = 2 (bozuk kart sessizce atlanır, hata yok).
+        Assert.Equal(2, result.Value.Total);
+        Assert.Equal(2, result.Value.Items.Count);
+    }
+
     // (c2) Token ÇÖZÜLEMİYORSA (bozuk kayıt/anahtar rotasyonu) snapshot varsa stale döner —
     // erişilemezlikle aynı muamele; 500 yerine son bilinen bakiye.
     [Fact]

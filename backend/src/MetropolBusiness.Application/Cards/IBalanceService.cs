@@ -27,4 +27,13 @@ public interface IBalanceService
     /// <summary>Son 5 işlem (ana ekran kısayolu, API_CONTRACT §6 /recent).</summary>
     Task<Result<ItemsResponse<TransactionItemDto>>> GetRecentAsync(
         Guid cardId, CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Kullanıcının TÜM kartlarının işlemleri birleşik (KARAR 2026-06-12: geçmiş
+    /// ekranındaki "Tümü" seçeneği). Kart bazlı listeler birleştirilip tarihe göre
+    /// sıralanır; tek kartın hatası/bozuk kaydı listeyi düşürmez (o kart atlanır).
+    /// </summary>
+    Task<Result<PagedResponse<TransactionItemDto>>> GetAllTransactionsAsync(
+        int page, int pageSize, DateTimeOffset? startDate, DateTimeOffset? endDate,
+        CancellationToken cancellationToken = default);
 }

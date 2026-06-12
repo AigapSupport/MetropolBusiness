@@ -74,4 +74,18 @@ public sealed class MetropolCardsController(
     [HttpGet("cards/{cardId:guid}/recent")]
     public async Task<IActionResult> GetRecent(Guid cardId, CancellationToken cancellationToken) =>
         (await balanceService.GetRecentAsync(cardId, cancellationToken)).ToActionResult();
+
+    /// <summary>
+    /// GET /metropol/transactions — kullanıcının TÜM kartlarının işlemleri birleşik
+    /// (geçmiş ekranı "Tümü" seçeneği, KARAR 2026-06-12). Aynı sayfalı zarf + tarih filtresi.
+    /// </summary>
+    [HttpGet("transactions")]
+    public async Task<IActionResult> GetAllTransactions(
+        [FromQuery] int page = 1,
+        [FromQuery] int pageSize = 20,
+        [FromQuery] DateTimeOffset? startDate = null,
+        [FromQuery] DateTimeOffset? endDate = null,
+        CancellationToken cancellationToken = default) =>
+        (await balanceService.GetAllTransactionsAsync(
+            page, pageSize, startDate, endDate, cancellationToken)).ToActionResult();
 }

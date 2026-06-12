@@ -83,6 +83,10 @@ export const metropolApi = {
   getRecentTransactions(cardId: string): Promise<ItemList<TransactionItem>> {
     return api.get<ItemList<TransactionItem>>(`/metropol/cards/${cardId}/recent`);
   },
+  /** Tüm kartların işlemleri birleşik (geçmiş ekranı "Tümü", KARAR 2026-06-12). */
+  getAllTransactions(query: TransactionQuery = {}): Promise<Paged<TransactionItem>> {
+    return api.get<Paged<TransactionItem>>(`/metropol/transactions${toQueryString({ ...query })}`);
+  },
 
   // ── §7 Harcama (sıra: kod → KART SEÇ → presale → onay → confirm) ──
   /** (GetPreSaleInfo) Kart seçiminden SONRA çağrılır (CLAUDE.md §6). */

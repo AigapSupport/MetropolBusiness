@@ -54,6 +54,8 @@ public sealed class BalanceService(
     /// </summary>
     private static readonly string[] KnownDateFormats =
     [
+        // GERÇEK biçim (canlı veri 2026-06-12): "20260612174347" — listenin başında.
+        "yyyyMMddHHmmss",
         "yyyy-MM-ddTHH:mm:ss",
         "yyyy-MM-dd HH:mm:ss",
         "yyyy-MM-ddTHH:mm:ssZ",
@@ -325,21 +327,7 @@ public sealed class BalanceService(
             return Result<PagedResponse<TransactionItemDto>>.Fail(MetropolError(response.ResponseCode));
         }
 
-        var mapped = (response.PaymentInfo ?? [])
-            .Select(item =>
-            {
-                var (isoDate, parsedDate) = ParseTransactionDate(item.TransactionDate);
-                return (Dto: MapTransaction(item, isoDate), ParsedDate: parsedDate);
-            })
-            // Tarih filtresi parse edilebilen kayıtlara uygulanır; parse EDİLEMEYEN kayıt
-            // güvenli tarafta listede TUTULUR (veri kaybetmek yerine göstermek tercih edilir).
-            .Where(x => x.ParsedDate is null
-                || ((startDate is null || x.ParsedDate >= startDate)
-                    && (endDate is null || x.ParsedDate <= endDate)))
-            // En yeni işlem önce; tarihi çözülemeyenler listenin sonunda.
-            .OrderByDescending(x => x.ParsedDate ?? DateTimeOffset.MinValue)
-            .Select(x => x.Dto)
-            .ToList();
+        var mapped = MapFilterSort(response.PaymentInfo, startDate, endDate);
 
         // TransactionHistory sözleşmesi SAYFASIZ döner (istekte sayfa parametresi yok);
         // bizim sözleşme §0.4 sayfalı zarf ister → bellekte sayfalanır.
@@ -351,6 +339,79 @@ public sealed class BalanceService(
         return Result<PagedResponse<TransactionItemDto>>.Ok(
             new PagedResponse<TransactionItemDto>(items, page, pageSize, mapped.Count));
     }
+
+    public async Task<Result<PagedResponse<TransactionItemDto>>> GetAllTransactionsAsync(
+        int page, int pageSize, DateTimeOffset? startDate, DateTimeOffset? endDate,
+        CancellationToken cancellationToken = default)
+    {
+        if (page < 1)
+        {
+            page = 1;
+        }
+
+        pageSize = pageSize switch
+        {
+            < 1 => 20,
+            > 100 => 100,
+            _ => pageSize,
+        };
+
+        var userId = RequiredUserId;
+        var cards = await dbContext.Cards
+            .AsNoTracking()
+            .Where(c => c.UserId == userId)
+            .ToListAsync(cancellationToken);
+
+        // Kart bazlı listeler birleştirilir; TEK kartın bozuk kaydı/iş hatası tüm
+        // listeyi düşürmez (o kart atlanır — kullanıcı kalan kartlarını yine görür).
+        var all = new List<TransactionHistoryItem>();
+        foreach (var card in cards)
+        {
+            var token = fieldCipher.Decrypt(card.UserAccountTokenEncrypted);
+            if (token is null)
+            {
+                continue;
+            }
+
+            var response = await metropolApiClient.TransactionHistoryAsync(
+                new TransactionHistoryRequest { UserAccountRef = token }, cancellationToken);
+            if (!MetropolErrorCatalog.IsSuccess(response.ResponseCode))
+            {
+                continue;
+            }
+
+            all.AddRange(response.PaymentInfo ?? []);
+        }
+
+        var mapped = MapFilterSort(all, startDate, endDate);
+        var items = mapped
+            .Skip((page - 1) * pageSize)
+            .Take(pageSize)
+            .ToList();
+
+        return Result<PagedResponse<TransactionItemDto>>.Ok(
+            new PagedResponse<TransactionItemDto>(items, page, pageSize, mapped.Count));
+    }
+
+    /// <summary>
+    /// Ortak işlem hattı: maskele/eşle → tarih filtresi (parse EDİLEMEYEN kayıt güvenli
+    /// tarafta TUTULUR — veri kaybetmek yerine göstermek tercih edilir) → en yeni önce
+    /// sırala (tarihi çözülemeyenler sonda).
+    /// </summary>
+    private static List<TransactionItemDto> MapFilterSort(
+        List<TransactionHistoryItem>? source, DateTimeOffset? startDate, DateTimeOffset? endDate) =>
+        (source ?? [])
+            .Select(item =>
+            {
+                var (isoDate, parsedDate) = ParseTransactionDate(item.TransactionDate);
+                return (Dto: MapTransaction(item, isoDate), ParsedDate: parsedDate);
+            })
+            .Where(x => x.ParsedDate is null
+                || ((startDate is null || x.ParsedDate >= startDate)
+                    && (endDate is null || x.ParsedDate <= endDate)))
+            .OrderByDescending(x => x.ParsedDate ?? DateTimeOffset.MinValue)
+            .Select(x => x.Dto)
+            .ToList();
 
     public async Task<Result<ItemsResponse<TransactionItemDto>>> GetRecentAsync(
         Guid cardId, CancellationToken cancellationToken = default)
