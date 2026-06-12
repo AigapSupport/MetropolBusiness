@@ -1,6 +1,7 @@
 using System.Net.Http.Headers;
 using System.Net.Http.Json;
 using System.Text.Json;
+using Microsoft.Extensions.Logging;
 using static MetropolBusiness.Integration.Metropol.Models.MetropolModels;
 
 namespace MetropolBusiness.Integration.Metropol.Services;
@@ -8,11 +9,17 @@ namespace MetropolBusiness.Integration.Metropol.Services;
 /// <summary>
 /// IMetropolApiClient HTTP implementasyonu. Her çağrıda MetropolTokenService'ten
 /// geçerli Bearer token alınır (cache'li). İstek/yanıt gövdeleri ve kart no/TCKN
-/// LOG'LANMAZ (CLAUDE.md kural 4). Retry YOK: para uçlarında (SaleConfirm,
-/// BalanceTransfer) çift işlem riski nedeniyle yeniden deneme uygulama katmanında
-/// idempotency ile yönetilir (CLAUDE.md §6, ARCHITECTURE §5.2).
+/// LOG'LANMAZ (CLAUDE.md kural 4) — yalnız İŞ HATALARINDA uç + ResponseCode +
+/// sağlayıcının jenerik ResponseMessage'ı loglanır (istek PII'si içermez; belgesiz
+/// kodların — 9001/90000 vb. — anlamını teşhis için tek kaynak budur).
+/// Retry YOK: para uçlarında (SaleConfirm, BalanceTransfer) çift işlem riski
+/// nedeniyle yeniden deneme uygulama katmanında idempotency ile yönetilir
+/// (CLAUDE.md §6, ARCHITECTURE §5.2).
 /// </summary>
-public sealed class MetropolApiClient(HttpClient httpClient, MetropolTokenService tokenService)
+public sealed class MetropolApiClient(
+    HttpClient httpClient,
+    MetropolTokenService tokenService,
+    ILogger<MetropolApiClient> logger)
     : IMetropolApiClient
 {
     private static readonly JsonSerializerOptions JsonOptions = new()
@@ -83,7 +90,32 @@ public sealed class MetropolApiClient(HttpClient httpClient, MetropolTokenServic
         response.EnsureSuccessStatusCode();
 
         var result = await response.Content.ReadFromJsonAsync<TResponse>(JsonOptions, ct);
-        return result
-            ?? throw new InvalidOperationException($"Metropol yanıtı boş döndü ({endpoint}).");
+        if (result is null)
+        {
+            throw new InvalidOperationException($"Metropol yanıtı boş döndü ({endpoint}).");
+        }
+
+        LogBusinessError(endpoint, result);
+        return result;
+    }
+
+    /// <summary>
+    /// ResponseCode != 0 ise uç + kod + sağlayıcı mesajını loglar (warning).
+    /// Yanıt modellerinde alanlar ortak adlıdır; reflection ile okunur — istek
+    /// gövdesi/PII loglanmaz, ResponseMessage Metropol'ün jenerik hata metnidir.
+    /// </summary>
+    private void LogBusinessError<TResponse>(string endpoint, TResponse result)
+    {
+        var type = typeof(TResponse);
+        var code = type.GetProperty("ResponseCode")?.GetValue(result) as int?;
+        if (code is null or 0)
+        {
+            return;
+        }
+
+        var providerMessage = type.GetProperty("ResponseMessage")?.GetValue(result) as string;
+        logger.LogWarning(
+            "Metropol iş hatası: {Endpoint} ResponseCode={ResponseCode} Mesaj={ProviderMessage}",
+            endpoint, code, providerMessage ?? "(boş)");
     }
 }
