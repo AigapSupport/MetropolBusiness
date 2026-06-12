@@ -51,6 +51,19 @@ public sealed class MerchantsServiceTests : IDisposable
         Assert.Equal(first.Value.LastListVersionDate, second.Value.LastListVersionDate);
     }
 
+    // Metropol koordinatları TÜRKÇE ondalıkla döner ("41,0619") — istemci Number()
+    // parse edemiyordu (haritada pin yok, 2026-06-12) → noktaya normalize edilir.
+    [Fact]
+    public async Task Coordinates_are_normalized_to_dot_decimal()
+    {
+        var result = await CreateService().GetMerchantsAsync(2, 1, null);
+
+        Assert.True(result.IsSuccess);
+        var merchant = Assert.Single(result.Value.Items);
+        Assert.Equal("41.0619", merchant.Lat);
+        Assert.Equal("28.9979", merchant.Lng);
+    }
+
     [Fact]
     public async Task Different_sector_uses_separate_cache_entry()
     {

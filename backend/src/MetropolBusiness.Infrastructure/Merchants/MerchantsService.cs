@@ -60,7 +60,11 @@ public sealed class MerchantsService(
             response.LastListVersionDate,
             (response.MerchantList ?? []).Select(m => new MerchantDto(
                 m.MerchantCode, m.SignboardName, m.Sector, m.SubSector, m.City,
-                m.District, m.SaleAddress, m.TelNo, m.Lat, m.Lng,
+                m.District, m.SaleAddress, m.TelNo,
+                // Metropol koordinatları TÜRKÇE biçimde döner ("41,0619...") — istemci
+                // Number() ile parse edemiyor (NaN → haritada pin yok, 2026-06-12).
+                // Nokta ondalıklı normalize edilir.
+                NormalizeCoordinate(m.Lat), NormalizeCoordinate(m.Lng),
                 m.ActiveFlag, m.CampaignCode)).ToList());
 
         await cache.SetStringAsync(cacheKey, JsonSerializer.Serialize(dto, JsonOptions),
@@ -68,6 +72,10 @@ public sealed class MerchantsService(
 
         return Result<MerchantListDto>.Ok(dto);
     }
+
+    /// <summary>Türkçe ondalık virgülünü noktaya çevirir ("41,06" → "41.06"); boş değer boş kalır.</summary>
+    private static string NormalizeCoordinate(string? value) =>
+        value?.Replace(',', '.') ?? string.Empty;
 
     public async Task<Result<bool>> SubmitFeedbackAsync(
         string merchantCode, MerchantFeedbackRequestDto request, CancellationToken ct = default)

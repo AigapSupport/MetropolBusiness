@@ -269,6 +269,31 @@ public sealed class BalanceServiceTests : IDisposable
         Assert.Empty(verify.CardBalances.AsNoTracking().Where(cb => cb.CardId == _cardA).ToList());
     }
 
+    // (a2) Metropol AYNI cüzdan için birden çok satır dönebiliyor (gerçek kartta görüldü,
+    // 2026-06-12: upsert 23505 duplicate key fırlatıyordu) → cüzdan bazında TOPLANIR.
+    [Fact]
+    public async Task Balance_merges_duplicate_wallet_rows_by_summing()
+    {
+        _metropol.NextBalanceResponse.UserBalance =
+        [
+            new UserBalance { WalletId = 1, WalletName = "RESTO", Balance = 100.50m },
+            new UserBalance { WalletId = 1, WalletName = "RESTO", Balance = 49.50m },
+            new UserBalance { WalletId = 3, WalletName = "GIFT", Balance = 10.00m },
+        ];
+        var service = CreateBalanceService(TenantA, _userA1);
+
+        var result = await service.GetBalanceAsync(_cardA, null, forceRefresh: false);
+
+        Assert.True(result.IsSuccess);
+        Assert.Equal(2, result.Value.Wallets.Count); // cüzdan başına TEK satır
+        Assert.Equal("150.00", result.Value.Wallets.Single(w => w.WalletId == 1).Balance);
+        Assert.Equal("160.00", result.Value.TotalBalance);
+
+        // DB snapshot'ında da cüzdan başına tek satır (unique index ihlali yok).
+        using var verify = CreateContext(TenantA, _userA1);
+        Assert.Equal(2, verify.CardBalances.AsNoTracking().Count(cb => cb.CardId == _cardA));
+    }
+
     // (c2) Token ÇÖZÜLEMİYORSA (bozuk kayıt/anahtar rotasyonu) snapshot varsa stale döner —
     // erişilemezlikle aynı muamele; 500 yerine son bilinen bakiye.
     [Fact]

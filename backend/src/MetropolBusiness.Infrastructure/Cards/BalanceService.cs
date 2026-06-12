@@ -170,7 +170,19 @@ public sealed class BalanceService(
             return Result<BalanceResponse>.Fail(MetropolError(response.ResponseCode));
         }
 
-        var balances = response.UserBalance ?? [];
+        // Metropol aynı cüzdan (WalletId) için BİRDEN ÇOK satır dönebiliyor (gerçek
+        // kartta görüldü, 2026-06-12: upsert unique index 23505 fırlattı). Sözleşmemiz
+        // cüzdan başına TEK satırdır → tutarlar toplanır, ad ilk dolu değerden alınır.
+        var balances = (response.UserBalance ?? [])
+            .GroupBy(w => w.WalletId)
+            .Select(g => new UserBalance
+            {
+                WalletId = g.Key,
+                WalletName = g.Select(w => w.WalletName)
+                    .FirstOrDefault(n => !string.IsNullOrWhiteSpace(n)) ?? string.Empty,
+                Balance = g.Sum(w => w.Balance),
+            })
+            .ToList();
         var asOf = await UpsertSnapshotAsync(cardId, balances, cancellationToken);
 
         var wallets = balances

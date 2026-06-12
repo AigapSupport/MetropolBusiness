@@ -204,7 +204,8 @@ internal sealed class FakeMetropolApiClient : IMetropolApiClient
             {
                 MerchantCode = "0000000005", SignboardName = "İstanbul Kokoreç",
                 Sector = "Restoran", SubSector = "Büfe", City = "İstanbul", District = "Şişli",
-                SaleAddress = "adres", TelNo = "2122759134", Lat = "41.0619", Lng = "28.9979",
+                // Gerçek Metropol yanıtı gibi TÜRKÇE ondalık (virgül) — servis normalize eder.
+                SaleAddress = "adres", TelNo = "2122759134", Lat = "41,0619", Lng = "28,9979",
                 ActiveFlag = 1, CampaignCode = 0,
             },
         ],
