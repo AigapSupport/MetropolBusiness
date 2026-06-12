@@ -90,6 +90,8 @@ public static class DependencyInjection
 
             // Kart + bakiye/işlem servisleri (TODO 1.4/1.5 backend) — AppDbContext ve
             // IMetropolApiClient (AddMetropolIntegration kaydı) gerektirir.
+            // MemberId: kısa sayısal sequence üretici (KARAR 2026-06-12, LESSONS.md).
+            services.AddScoped<IMemberIdGenerator, DbSequenceMemberIdGenerator>();
             services.AddScoped<ICardsService, CardsService>();
             services.AddScoped<IBalanceService, BalanceService>();
 

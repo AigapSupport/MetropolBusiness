@@ -14,7 +14,8 @@ namespace MetropolBusiness.Infrastructure.Tenants;
 /// firma admin başka tenant'ın kullanıcısını LİSTELEYEMEZ ve değiştiremez.
 /// Silme yok — DELETE pasifleştirir (Status=Passive, CLAUDE.md kural 7).
 /// </summary>
-public sealed class CompanyUsersService(AppDbContext dbContext, ITenantContext tenantContext)
+public sealed class CompanyUsersService(
+    AppDbContext dbContext, ITenantContext tenantContext, IMemberIdGenerator memberIdGenerator)
     : ICompanyUsersService
 {
     private const int DefaultPageSize = 20;
@@ -158,9 +159,9 @@ public sealed class CompanyUsersService(AppDbContext dbContext, ITenantContext t
                 .ToList(),
         };
 
-        // KARAR 2026-06-11: her kullanıcıya Metropol MemberId otomatik atanır (boşsa
-        // Id'nin 32 hex hali; doluysa dokunulmaz) — bkz. User.EnsureMemberId + LESSONS.md.
-        user.EnsureMemberId();
+        // KARAR 2026-06-12 (rev.): her kullanıcıya Metropol MemberId otomatik atanır —
+        // kısa SAYISAL sequence değeri (32-hex Metropol'de reddedildi, LESSONS.md).
+        user.MemberId = await memberIdGenerator.NextAsync(cancellationToken);
 
         dbContext.Users.Add(user);
         await dbContext.SaveChangesAsync(cancellationToken);

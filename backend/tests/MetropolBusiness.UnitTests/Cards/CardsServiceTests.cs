@@ -27,6 +27,7 @@ public sealed class CardsServiceTests : IDisposable
     private readonly SqliteConnection _connection;
     private readonly PlaceholderFieldCipher _cipher = new();
     private readonly FakeMetropolApiClient _metropol = new();
+    private readonly FakeMemberIdGenerator _memberIds = new();
 
     private readonly Guid _userA1 = Guid.NewGuid(); // tenant A, MemberId'li, kartsız
     private readonly Guid _userA2 = Guid.NewGuid(); // tenant A, kartlı
@@ -164,8 +165,9 @@ public sealed class CardsServiceTests : IDisposable
         Assert.Equal("3299", _metropol.ConfirmCalls.Single().MemberId);
     }
 
-    // KARAR 2026-06-12: MemberId boşsa hata DEĞİL — sunucu üretir (Id "N" = 32 hex),
-    // Metropol çağrısından ÖNCE kaydeder ve aynı değeri Metropol'e gönderir.
+    // KARAR 2026-06-12 (rev.): MemberId boşsa hata DEĞİL — sunucu KISA SAYISAL sequence
+    // değeri üretir (32-hex Metropol'de reddedildi), Metropol çağrısından ÖNCE kaydeder
+    // ve aynı değeri Metropol'e gönderir.
     [Fact]
     public async Task Confirm_without_member_id_generates_persists_and_sends_it()
     {
@@ -175,12 +177,12 @@ public sealed class CardsServiceTests : IDisposable
 
         Assert.True(result.IsSuccess);
 
-        var expected = _userA3.ToString("N");
-        Assert.Equal(expected, _metropol.ConfirmCalls.Single().MemberId);
+        var sent = _metropol.ConfirmCalls.Single().MemberId;
+        Assert.Equal("10001", sent); // kısa sayısal sequence biçimi
 
         using var verify = CreateContext(TenantA, _userA3);
         var stored = await verify.Users.AsNoTracking().SingleAsync(u => u.Id == _userA3);
-        Assert.Equal(expected, stored.MemberId);
+        Assert.Equal(sent, stored.MemberId);
     }
 
     [Fact]
@@ -309,7 +311,16 @@ public sealed class CardsServiceTests : IDisposable
     private CardsService CreateCardsService(Guid tenantId, Guid userId)
     {
         var tenantContext = new StubTenantContext(tenantId, userId);
-        return new CardsService(CreateContext(tenantId, userId), tenantContext, _cipher, _metropol);
+        return new CardsService(
+            CreateContext(tenantId, userId), tenantContext, _cipher, _metropol, _memberIds);
+    }
+
+    /// <summary>Sequence taklidi: "10001"den artan kısa SAYISAL MemberId (KARAR 2026-06-12).</summary>
+    private sealed class FakeMemberIdGenerator : MetropolBusiness.Application.Common.IMemberIdGenerator
+    {
+        private int _next = 10000;
+        public Task<string> NextAsync(CancellationToken cancellationToken = default) =>
+            Task.FromResult((++_next).ToString());
     }
 
     private AppDbContext CreateContext(Guid? tenantId, Guid? userId)

@@ -18,7 +18,8 @@ public sealed class CardsService(
     AppDbContext dbContext,
     ITenantContext tenantContext,
     IFieldCipher fieldCipher,
-    IMetropolApiClient metropolApiClient) : ICardsService
+    IMetropolApiClient metropolApiClient,
+    IMemberIdGenerator memberIdGenerator) : ICardsService
 {
     private static readonly Error CardNotFoundError = new(
         ErrorCodes.NotFound, "Kart bulunamadı.", 404);
@@ -136,11 +137,11 @@ public sealed class CardsService(
 
         // MemberId İSTEKTEN ALINMAZ: istemci başka kullanıcının MemberId'sini deneyemesin diye
         // her zaman oturum sahibinin users.member_id değeri gönderilir (sözleşme alanı yok sayılır).
-        // Boşsa BİZ üretip Metropol'e göndeririz (karar 2026-06-12) — Metropol çağrısından
-        // ÖNCE kaydedilir ki gönderilen değer her durumda kalıcı olsun.
+        // Boşsa BİZ üretip Metropol'e göndeririz (karar 2026-06-12; kısa sayısal — sequence,
+        // 32-hex reddedildi) — Metropol çağrısından ÖNCE kaydedilir ki değer kalıcı olsun.
         if (string.IsNullOrWhiteSpace(user.MemberId))
         {
-            user.EnsureMemberId();
+            user.MemberId = await memberIdGenerator.NextAsync(cancellationToken);
             await dbContext.SaveChangesAsync(cancellationToken);
         }
 

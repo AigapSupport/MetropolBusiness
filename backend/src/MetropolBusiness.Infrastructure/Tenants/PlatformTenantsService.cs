@@ -21,6 +21,7 @@ public sealed class PlatformTenantsService(
     AppDbContext dbContext,
     IPanelAuthService panelAuthService,
     IAuditLogger auditLogger,
+    IMemberIdGenerator memberIdGenerator,
     ILogger<PlatformTenantsService> logger) : IPlatformTenantsService
 {
     private const int DefaultPageSize = 20;
@@ -278,9 +279,9 @@ public sealed class PlatformTenantsService(
             Status = EntityStatus.Active,
         };
 
-        // KARAR 2026-06-11: her kullanıcıya Metropol MemberId otomatik atanır (boşsa
-        // Id'nin 32 hex hali; doluysa dokunulmaz) — bkz. User.EnsureMemberId + LESSONS.md.
-        admin.EnsureMemberId();
+        // KARAR 2026-06-12 (rev.): her kullanıcıya Metropol MemberId otomatik atanır —
+        // kısa SAYISAL sequence değeri (32-hex Metropol'de reddedildi, LESSONS.md).
+        admin.MemberId = await memberIdGenerator.NextAsync(cancellationToken);
 
         dbContext.Users.Add(admin);
         await dbContext.SaveChangesAsync(cancellationToken);

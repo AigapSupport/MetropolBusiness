@@ -148,7 +148,8 @@ public sealed class AdminServicesTests : IDisposable
         Assert.Equal(ErrorCodes.ValidationError, result.Error!.Code);
     }
 
-    // ── KARAR 2026-06-11: her kullanıcıya Metropol MemberId otomatik atanır ──
+    // ── KARAR 2026-06-12 (rev.): MemberId kısa SAYISAL sequence değeridir ────
+    // (32-hex Guid biçimi Metropol AddAccountConfirm'de reddedildi — LESSONS.md.)
 
     [Fact]
     public async Task Created_user_gets_auto_member_id()
@@ -159,16 +160,14 @@ public sealed class AdminServicesTests : IDisposable
             "5554443322", "Mehmet", "Demir", null, null, null));
         Assert.True(created.IsSuccess);
 
-        // MemberId = Id'nin 32 hex hali ("N") — benzersiz, ek sekans altyapısı yok.
         using var verify = CreateContext(TenantA, _adminA, isPlatformAdmin: false);
         var user = verify.Users.AsNoTracking().Single(u => u.Id == created.Value.Id);
-        Assert.Equal(user.Id.ToString("N"), user.MemberId);
-        Assert.Equal(32, user.MemberId!.Length);
-        Assert.Matches("^[0-9a-f]{32}$", user.MemberId);
+        Assert.Equal("10001", user.MemberId); // fake sequence ilk değeri — kısa SAYISAL
+        Assert.Matches("^[0-9]+$", user.MemberId);
     }
 
     [Fact]
-    public async Task Invited_admin_gets_auto_member_id_and_filled_member_id_is_kept()
+    public async Task Invited_admin_gets_auto_member_id()
     {
         var service = CreatePlatformTenantsService();
 
@@ -180,17 +179,9 @@ public sealed class AdminServicesTests : IDisposable
         using var verify = CreateContext(null, null, isPlatformAdmin: true);
         var admin = verify.Users.IgnoreQueryFilters().AsNoTracking()
             .Single(u => u.Id == invited.Value.Id);
-        Assert.Equal(admin.Id.ToString("N"), admin.MemberId);
-
-        // Dolu MemberId'ye DOKUNULMAZ (elle atanmış Metropol numarası korunur).
-        var manual = new User { MemberId = "3299" };
-        manual.EnsureMemberId();
-        Assert.Equal("3299", manual.MemberId);
-
-        // Boş string de "boş" sayılır ve atanır.
-        var blank = new User { MemberId = "" };
-        blank.EnsureMemberId();
-        Assert.Equal(blank.Id.ToString("N"), blank.MemberId);
+        Assert.Matches("^[0-9]+$", admin.MemberId);
+        // NOT: dolu MemberId'nin korunması CardsServiceTests
+        // (Confirm_uses_member_id_from_db_not_from_request) ile güvence altında.
     }
 
     [Fact]
@@ -474,7 +465,16 @@ public sealed class AdminServicesTests : IDisposable
     {
         var tenantContext = new StubTenantContext(tenantId, userId, isPlatformAdmin: false);
         return new CompanyUsersService(
-            CreateContext(tenantId, userId, isPlatformAdmin: false), tenantContext);
+            CreateContext(tenantId, userId, isPlatformAdmin: false), tenantContext,
+            new FakeMemberIdGenerator());
+    }
+
+    /// <summary>Sequence taklidi: "10001"den artan kısa SAYISAL MemberId (KARAR 2026-06-12).</summary>
+    private sealed class FakeMemberIdGenerator : MetropolBusiness.Application.Common.IMemberIdGenerator
+    {
+        private int _next = 10000;
+        public Task<string> NextAsync(CancellationToken cancellationToken = default) =>
+            Task.FromResult((++_next).ToString());
     }
 
     private CompanySegmentsService CreateSegmentsService(Guid tenantId, Guid userId) =>
@@ -488,7 +488,7 @@ public sealed class AdminServicesTests : IDisposable
         var auditLogger = new AuditLogger(
             context, new StubTenantContext(null, Guid.NewGuid(), isPlatformAdmin: true));
         return new PlatformTenantsService(
-            context, new FakePanelAuthService(), auditLogger,
+            context, new FakePanelAuthService(), auditLogger, new FakeMemberIdGenerator(),
             NullLogger<PlatformTenantsService>.Instance);
     }
 

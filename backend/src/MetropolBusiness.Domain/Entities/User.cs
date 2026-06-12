@@ -38,23 +38,13 @@ public class User : BaseEntity, ITenantOwned, ISoftDeletable
 
     public UserRole Role { get; set; } = UserRole.EndUser;
 
-    /// <summary>Metropol MemberId — kullanıcının ödeme kuruluşundaki benzersiz numarası.</summary>
-    public string? MemberId { get; set; }
-
     /// <summary>
-    /// MemberId boşsa Id'den otomatik atar (KARAR 2026-06-11: her kullanıcının bir Metropol
-    /// MemberId'si olur). Biçim: Id'nin 32 hex hali ("N") — benzersizdir, ek sekans
-    /// altyapısı gerektirmez. Dolu MemberId'ye DOKUNULMAZ (elle atanmış değer korunur).
-    /// VARSAYIM (LESSONS.md): Metropol MemberId uzunluk/biçim sınırı belgesiz; 32 hex
-    /// kabul edildi, Metropol test ortamında teyit edilecek.
+    /// Metropol MemberId — kullanıcının ödeme kuruluşundaki benzersiz numarası.
+    /// Boşsa servis katmanı IMemberIdGenerator ile atar (KARAR 2026-06-12: kısa SAYISAL
+    /// sequence — önceki 32-hex Guid biçimi Metropol'de reddedildi, LESSONS.md).
+    /// Dolu MemberId'ye DOKUNULMAZ (elle atanmış değer korunur).
     /// </summary>
-    public void EnsureMemberId()
-    {
-        if (string.IsNullOrWhiteSpace(MemberId))
-        {
-            MemberId = Id.ToString("N");
-        }
-    }
+    public string? MemberId { get; set; }
 
     public EntityStatus Status { get; set; } = EntityStatus.Active;
     public DateTimeOffset? DeletedAt { get; set; }
