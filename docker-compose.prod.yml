@@ -74,6 +74,7 @@ services:
       Metropol__AesKey: ${METROPOL_AES_KEY}
       Metropol__ConsumerId: ${METROPOL_CONSUMER_ID}
       Metropol__ConsumerName: ${METROPOL_CONSUMER_NAME}
+      Metropol__RefNo: ${METROPOL_REF_NO:-}
       Gemini__ApiKey: ${GEMINI_API_KEY}
       # Migration deploy.sh MIGRATE_CMD ile uygulanır; açılışta tekrar denenmez.
       Database__MigrateOnStartup: "false"

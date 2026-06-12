@@ -77,7 +77,10 @@ public sealed class MetropolTokenService(
             ConsumerId = _options.ConsumerId,
             ConsumerName = _options.ConsumerName,
             SecureAccessData = secureAccessData,
-            RefNo = Guid.NewGuid().ToString("N"),
+            // Metropol'ün verdiği sabit referans numarası; tanımsızsa istek başına GUID.
+            RefNo = string.IsNullOrEmpty(_options.RefNo)
+                ? Guid.NewGuid().ToString("N")
+                : _options.RefNo,
         }, cancellationToken);
 
         // Token üretememek beklenen iş hatası değil sistem hatasıdır; sır içermeyen mesajla fırlatılır.
