@@ -132,11 +132,13 @@ INSERT INTO expense_requests (id, tenant_id, user_id, type, amount, date, receip
 ON CONFLICT (id) DO NOTHING;
 
 -- ── Kartlar + bakiyeler (SAHTE token; Metropol işlemi YAPILAMAZ) ─
+-- Token PlaceholderFieldCipher biçiminde (enc:base64) ÇÖZÜLEBİLİR ama Metropol'de
+-- geçersizdir → bakiye akışı tasarlandığı gibi "erişilemez → stale snapshot" yoluna düşer.
 INSERT INTO cards (id, tenant_id, user_id, user_account_token_encrypted, masked_card_no, holder_name, status, deleted_at, created_at, updated_at) VALUES
   ('cad00000-0000-0000-0000-000000000001', '11111111-1111-1111-1111-111111111111', 'aaaaaaaa-0000-0000-0000-000000000003',
-   'DEMO-FAKE-TOKEN-NOT-DECRYPTABLE-001', '637512******4821', 'Demo Çalışan', 'active', NULL, now() - interval '30 days', now()),
+   'enc:REVNTy1GQUtFLVRPS0VOLTAwMQ==', '637512******4821', 'Demo Çalışan', 'active', NULL, now() - interval '30 days', now()),
   ('cad00000-0000-0000-0000-000000000002', '11111111-1111-1111-1111-111111111111', 'aaaaaaaa-0000-0000-0000-000000000001',
-   'DEMO-FAKE-TOKEN-NOT-DECRYPTABLE-002', '637512******7733', 'Demo Admin', 'active', NULL, now() - interval '45 days', now())
+   'enc:REVNTy1GQUtFLVRPS0VOLTAwMg==', '637512******7733', 'Demo Admin', 'active', NULL, now() - interval '45 days', now())
 ON CONFLICT (id) DO NOTHING;
 
 INSERT INTO card_balances (id, tenant_id, card_id, wallet_id, wallet_name, balance, created_at, updated_at) VALUES

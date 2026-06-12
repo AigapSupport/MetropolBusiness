@@ -60,18 +60,36 @@ public sealed class BalanceService(
         Guid cardId, int? walletId, bool forceRefresh, CancellationToken cancellationToken = default)
     {
         var tokenResult = await ResolveCardTokenAsync(cardId, cancellationToken);
+        BalanceResponse? full = null;
+
         if (!tokenResult.IsSuccess)
         {
-            return Result<BalanceResponse>.Fail(tokenResult.Error!);
+            // Kart-yok (404) aynen döner. Token ÇÖZÜLEMİYORSA (anahtar rotasyonu/bozuk
+            // kayıt) bakiye için erişilemezlikle aynı muamele: snapshot varsa stale=true
+            // döner, yoksa orijinal hata korunur — 500 yerine son bilinen değer.
+            if (tokenResult.Error!.Code != ErrorCodes.InternalError)
+            {
+                return Result<BalanceResponse>.Fail(tokenResult.Error!);
+            }
+
+            full = await TryLoadSnapshotAsync(cardId, cancellationToken);
+            if (full is null)
+            {
+                return Result<BalanceResponse>.Fail(tokenResult.Error!);
+            }
+
+            // PII'siz log: token/kart verisi yazılmaz, yalnız id.
+            logger.LogWarning(
+                "Kart token'ı çözülemedi; son bilinen snapshot stale=true döndü. CardId={CardId}",
+                cardId);
         }
 
         // Cache her zaman TÜM cüzdanları tutar (anahtar BalanceCacheKeys.ForCard); walletId
         // filtresi bellekte uygulanır — böylece cüzdan bazlı istekler ayrı cache şişirmez.
         // Harcama/transfer servisleri para hareketi sonrası bu anahtarı geçersiz kılar.
         var cacheKey = BalanceCacheKeys.ForCard(cardId);
-        BalanceResponse? full = null;
 
-        if (!forceRefresh)
+        if (full is null && !forceRefresh)
         {
             var cached = await cache.GetStringAsync(cacheKey, cancellationToken);
             if (cached is not null)

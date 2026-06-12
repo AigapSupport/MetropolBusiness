@@ -269,6 +269,49 @@ public sealed class BalanceServiceTests : IDisposable
         Assert.Empty(verify.CardBalances.AsNoTracking().Where(cb => cb.CardId == _cardA).ToList());
     }
 
+    // (c2) Token ÇÖZÜLEMİYORSA (bozuk kayıt/anahtar rotasyonu) snapshot varsa stale döner —
+    // erişilemezlikle aynı muamele; 500 yerine son bilinen bakiye.
+    [Fact]
+    public async Task Balance_returns_stale_snapshot_when_token_undecryptable()
+    {
+        var service = CreateBalanceService(TenantA, _userA1);
+        var warm = await service.GetBalanceAsync(_cardA, null, forceRefresh: false);
+        Assert.True(warm.IsSuccess);
+
+        // Kart token'ı bozulur: cipher önekini taşımayan değer Decrypt'te null döner.
+        using (var corrupt = CreateContext(TenantA, _userA1))
+        {
+            var card = corrupt.Cards.First(c => c.Id == _cardA);
+            card.UserAccountTokenEncrypted = "BOZUK-KAYIT";
+            corrupt.SaveChanges();
+        }
+
+        var result = await service.GetBalanceAsync(_cardA, null, forceRefresh: true);
+
+        Assert.True(result.IsSuccess);
+        Assert.True(result.Value.Stale);
+        Assert.Equal("75405.00", result.Value.TotalBalance);
+    }
+
+    // (c3) Token çözülemez + snapshot YOK → 500 hata davranışı korunur (sessiz boş veri yok).
+    [Fact]
+    public async Task Balance_fails_when_token_undecryptable_and_no_snapshot()
+    {
+        using (var corrupt = CreateContext(TenantA, _userA1))
+        {
+            var card = corrupt.Cards.First(c => c.Id == _cardA);
+            card.UserAccountTokenEncrypted = "BOZUK-KAYIT";
+            corrupt.SaveChanges();
+        }
+
+        var service = CreateBalanceService(TenantA, _userA1);
+        var result = await service.GetBalanceAsync(_cardA, null, forceRefresh: false);
+
+        Assert.False(result.IsSuccess);
+        Assert.Equal(ErrorCodes.InternalError, result.Error!.Code);
+        Assert.Equal(500, result.Error.HttpStatus);
+    }
+
     // (d) İZOLASYON: başka tenant'ın kartının snapshot'ına erişilemez.
     [Fact]
     public async Task Other_tenants_snapshot_is_not_accessible()
