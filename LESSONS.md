@@ -218,3 +218,15 @@ Kurulum BAŞARILI: 5 container healthy, 7 migration uygulandı, 3 Traefik route 
 - SectorId 0/1/2 hepsi aynı 21.766 kaydı dönüyor → Metropol sektör filtrelemiyor; sektör filtresi istemcide (Explore zaten yapıyor). Cache anahtarında sektör gereksiz — ileride tekille (3 kopya ~birkaç MB Redis).
 - merchantlist ham-yanıt logu (RawPrefix) teşhis aracı olarak kalabilir; gövde kamusal merchant verisi.
 - Kart ekleme: telefon alanı ön-dolu + DÜZENLENEBİLİR yapıldı (rev.2) — Metropol telefonu KARTIN kayıtlı numarasıyla eşleştiriyor; test kartının kayıtlı telefonu Metropol''den öğrenilmeli.
+
+---
+
+## 2026-06-12 — İLK GERÇEK KART UÇTAN UCA ÇALIŞTI + iki canlı-veri dersi
+
+Metropol kartlardaki sorunu düzeltti; gerçek test kartı uygulamadan eklendi ve CANLI BAKİYE çekildi (3 cüzdan: RESTORAN/GIYIM/MARKET20, toplam 26.974,00 TL, stale=false). Bu akış şu varsayımları da DOĞRULADI: kart token saklama/çözme, BalanceQuery UserRefType=2 + çözülmüş token, kısa sayısal MemberId kabulü.
+
+**Canlı veriden çıkan iki ders (ikisi de düzeltildi):**
+1. **BalanceQuery aynı cüzdan için BİRDEN ÇOK satır dönebiliyor** → card_balances upsert''i unique index (card_id+wallet_id) 23505 fırlatıyordu. Cüzdan bazında gruplanıp TOPLANIR (BalanceService).
+2. **Tüm sayısal-string alanlar TÜRKÇE biçimde gelebiliyor**: merchant Lat/Lng "41,0619..." (virgül ondalık) → istemci Number() NaN → haritada pin yoktu. Backend nokta ondalıklıya normalize eder. DERS: Metropol''den gelen her sayısal-string''e kültür-duyarsız parse/normalize uygula.
+
+**Yeni gözlem (ileride lazım):** kartta WalletId 4 ("MARKET20") da var — CLAUDE.md/MetropolDefaults''taki "1=Resto, 3=Gift" eşlemesi eksikmiş. Harcama akışındaki ProductId→WalletId varsayımı (3→3, değilse 1) QR ödeme testinde teyit edilmeli; cüzdan 4''lü ürünlerde yanlış cüzdan seçilebilir.
