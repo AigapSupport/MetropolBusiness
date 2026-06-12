@@ -193,3 +193,15 @@ Kurulum BAŞARILI: 5 container healthy, 7 migration uygulandı, 3 Traefik route 
 - Sonraki uçtan uca test: gerçek kart numarasıyla AddAccount/Confirm akışı (SMS gerçek kart telefonuna gider) → MemberId 32-hex kabulü + kart token saklama + gerçek bakiye o testte doğrulanacak.
 
 **Not:** ConsumerName "AıGap_Test" (Türkçe ı) — env üzerinden UTF-8 geçiyor, System.Text.Json ı olarak kaçışlıyor; sorun çıkarmadı.
+
+---
+
+## 2026-06-12 — merchantlist 90000 ÇÖZÜLDÜ: null alan Metropol''i çökertiyordu
+
+**Kök neden:** `MerchantListRequest.LastListVersionDate` (sözleşmede `internal set`''li alan) istekte **null** serileşiyordu; Metropol tarafı null''da kendi iç hatasıyla çöküyor (ResponseCode 90000, mesaj: "Beklenmedik bir hata oluştu"). Boş string''e normalize edilince (alan adı/tipi değişmeden) uç 200 dönmeye başladı.
+
+**DERS:** Metropol uçlarına giden TÜM string alanlar null yerine boş string olmalı — null toleransı yok. Yeni uç eklerken kontrol et.
+
+**Kalan (veri, teknik değil):** test ortamı 3 sektörde de **0 üye işyeri** dönüyor (sürüm tarihi geliyor, liste boş). Metropol''den test ortamına örnek merchant verisi istenmeli — Keşfet ekranı veri gelince kendiliğinden dolar (6 saat cache; gerekirse redis flush).
+
+**Teşhis altyapısı:** MetropolApiClient artık iş hatalarında uç + ResponseCode + sağlayıcı mesajını logluyor (PII''siz). Bilinen kodlar: 9004 = "Kullanıcı bulunamadı" (add/limited, tanımsız kart). 9001 mesajı kullanıcının bir sonraki denemesinde loga düşecek (muhtemel neden: hesap telefonu kartın kayıtlı telefonuyla eşleşmiyor — dev kullanıcının telefonu gerçek numarayla güncellendi).
