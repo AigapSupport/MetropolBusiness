@@ -205,3 +205,16 @@ Kurulum BAŞARILI: 5 container healthy, 7 migration uygulandı, 3 Traefik route 
 **Kalan (veri, teknik değil):** test ortamı 3 sektörde de **0 üye işyeri** dönüyor (sürüm tarihi geliyor, liste boş). Metropol''den test ortamına örnek merchant verisi istenmeli — Keşfet ekranı veri gelince kendiliğinden dolar (6 saat cache; gerekirse redis flush).
 
 **Teşhis altyapısı:** MetropolApiClient artık iş hatalarında uç + ResponseCode + sağlayıcı mesajını logluyor (PII''siz). Bilinen kodlar: 9004 = "Kullanıcı bulunamadı" (add/limited, tanımsız kart). 9001 mesajı kullanıcının bir sonraki denemesinde loga düşecek (muhtemel neden: hesap telefonu kartın kayıtlı telefonuyla eşleşmiyor — dev kullanıcının telefonu gerçek numarayla güncellendi).
+
+---
+
+## 2026-06-12 (devam) — merchantlist tamamen ÇÖZÜLDÜ: veri geliyormuş, doğrulama hatası bizdeydi
+
+**Düzeltme:** Önceki kayıttaki "test ortamı 0 kayıt dönüyor" tespiti YANLIŞTI — doğrulama sırasında yanıtın `items` alanı yerine var olmayan `merchants` alanı okunmuş (null → 0 sanıldı). Null-alan düzeltmesinden beri Metropol **21.766 üye işyeri** dönüyor (ör. İstanbul Kokoreç/Restoran). Kullanıcının "merchantlist çalışıyor, istek bizde yanlış" itirazı doğru çıktı.
+
+**DERS: doğrulama çağrısında alan adını sözleşmeden (shared/types) KOPYALA, ezbere yazma** — null property PowerShell''de sessizce 0/boş görünür.
+
+**Notlar:**
+- SectorId 0/1/2 hepsi aynı 21.766 kaydı dönüyor → Metropol sektör filtrelemiyor; sektör filtresi istemcide (Explore zaten yapıyor). Cache anahtarında sektör gereksiz — ileride tekille (3 kopya ~birkaç MB Redis).
+- merchantlist ham-yanıt logu (RawPrefix) teşhis aracı olarak kalabilir; gövde kamusal merchant verisi.
+- Kart ekleme: telefon alanı ön-dolu + DÜZENLENEBİLİR yapıldı (rev.2) — Metropol telefonu KARTIN kayıtlı numarasıyla eşleştiriyor; test kartının kayıtlı telefonu Metropol''den öğrenilmeli.
