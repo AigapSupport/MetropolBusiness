@@ -21,6 +21,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import type { Merchant } from '@shared/metropol';
 import { ScreenHeader } from '@/components/ScreenHeader';
 import { useMerchantFeedback, useMerchants } from '@/hooks/useMerchants';
+import { getMetropolErrorMessage } from '@/hooks/useMetropol';
 import { clusterByGrid, distanceKm, formatDistance, type LatLng } from '@/utils/geo';
 import { geolocationModule, mapsModule } from '@/utils/nativeModules';
 import { useTheme } from '@/theme/ThemeProvider';
@@ -197,7 +198,10 @@ export function ExploreScreen({ navigation }: Props) {
         <ActivityIndicator color={theme.colors.brand} style={{ marginTop: theme.spacing.xl }} />
       ) : merchants.isError ? (
         <View style={styles.statusBox}>
-          <Text style={{ color: theme.colors.ink2 }}>{t('home.sectionError')}</Text>
+          {/* METROPOL_ERROR mesajı aynen gösterilir (genel metin yerine) — teşhis kolaylığı. */}
+          <Text style={{ color: theme.colors.ink2 }}>
+            {getMetropolErrorMessage(merchants.error, t('home.sectionError'))}
+          </Text>
           <Pressable onPress={() => void merchants.refetch()} hitSlop={8} accessibilityRole="button">
             <Text style={{ color: theme.colors.brand, fontWeight: '700' }}>{t('home.retry')}</Text>
           </Pressable>
