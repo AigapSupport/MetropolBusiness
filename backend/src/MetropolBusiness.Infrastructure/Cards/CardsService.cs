@@ -19,7 +19,8 @@ public sealed class CardsService(
     ITenantContext tenantContext,
     IFieldCipher fieldCipher,
     IMetropolApiClient metropolApiClient,
-    IMemberIdGenerator memberIdGenerator) : ICardsService
+    IMemberIdGenerator memberIdGenerator,
+    Microsoft.Extensions.Logging.ILogger<CardsService> logger) : ICardsService
 {
     private static readonly Error CardNotFoundError = new(
         ErrorCodes.NotFound, "Kart bulunamadı.", 404);
@@ -72,9 +73,18 @@ public sealed class CardsService(
             return Result<AddCardResponse>.Fail(phoneResult.Error!);
         }
 
+        var cardNo = request.CardNo.Trim();
+
+        // Teşhis (9004 avı): yalnız MASKELİ değerler + uzunluklar loglanır (CLAUDE.md kural 4
+        // maskeli loga izin verir) — biçim sorunlarını (eksik hane, yanlış numara) görünür kılar.
+        logger.LogInformation(
+            "AddAccount denemesi: kart={MaskedCardNo} ({CardLen} hane), tel={MaskedPhone} ({PhoneLen} hane)",
+            Masking.MaskCardNo(cardNo), cardNo.Length,
+            Masking.MaskPhone(phoneResult.Value), phoneResult.Value.Length);
+
         // Bu adımda DB'ye kayıt YAZILMAZ: kart ancak OTP doğrulanınca (confirm) oluşur.
         var response = await metropolApiClient.AddAccountAsync(
-            new AddAccountRequest { CardNo = request.CardNo.Trim(), MobilePhone = phoneResult.Value },
+            new AddAccountRequest { CardNo = cardNo, MobilePhone = phoneResult.Value },
             cancellationToken);
 
         if (!MetropolErrorCatalog.IsSuccess(response.ResponseCode))

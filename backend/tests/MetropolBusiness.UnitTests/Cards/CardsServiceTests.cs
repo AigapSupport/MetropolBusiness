@@ -312,7 +312,8 @@ public sealed class CardsServiceTests : IDisposable
     {
         var tenantContext = new StubTenantContext(tenantId, userId);
         return new CardsService(
-            CreateContext(tenantId, userId), tenantContext, _cipher, _metropol, _memberIds);
+            CreateContext(tenantId, userId), tenantContext, _cipher, _metropol, _memberIds,
+            Microsoft.Extensions.Logging.Abstractions.NullLogger<CardsService>.Instance);
     }
 
     /// <summary>Sequence taklidi: "10001"den artan kısa SAYISAL MemberId (KARAR 2026-06-12).</summary>
