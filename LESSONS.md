@@ -230,3 +230,20 @@ Metropol kartlardaki sorunu düzeltti; gerçek test kartı uygulamadan eklendi v
 2. **Tüm sayısal-string alanlar TÜRKÇE biçimde gelebiliyor**: merchant Lat/Lng "41,0619..." (virgül ondalık) → istemci Number() NaN → haritada pin yoktu. Backend nokta ondalıklıya normalize eder. DERS: Metropol''den gelen her sayısal-string''e kültür-duyarsız parse/normalize uygula.
 
 **Yeni gözlem (ileride lazım):** kartta WalletId 4 ("MARKET20") da var — CLAUDE.md/MetropolDefaults''taki "1=Resto, 3=Gift" eşlemesi eksikmiş. Harcama akışındaki ProductId→WalletId varsayımı (3→3, değilse 1) QR ödeme testinde teyit edilmeli; cüzdan 4''lü ürünlerde yanlış cüzdan seçilebilir.
+
+---
+
+## 2026-06-12 — ÖDEME/İŞLEM UÇLARI 404: sözleşmedeki v2 yolları test sunucusunda YOK
+
+**Belirti:** QR/kısa kod ödeme (presale-info) ve son işlemler (recent) 500 atıyor — Metropol HTTP **404** dönüyor (uç yok). Token geçerli (balance/merchantlist aynı token''la çalışıyor).
+
+**Canlı token''la sondalanan ve 404 dönen yollar** (~35 varyant denendi, v2/v3/limited kombinasyonları dahil):
+`/vpos/v2/sale/preinfo`, `/vpos/v2/sale/confirm`, `/vpos/v2/sale/createcode`, `/vpos/v2/sale/saleinfo`, `/vpos/v2/account/transactionhistory`, `/vpos/v2/account/delete`, `/vpos/v2/order/balancetransfer` — yani MetropolModels.cs''teki TÜM v2 işlem uçları.
+
+**Çalışan uçlar:** GenerateToken/getdate, `/vpos/v3/account/add/limited`, `/vpos/v3/account/confirm/limited`, `/vpos/v3/query/balance`, `/vpos/v2/report/merchantlist`.
+
+**ENGELLENEN özellikler (yol gelene kadar):** QR/kısa kod ödeme, işlem geçmişi + son 5 işlem, kart silme, bakiye transferi.
+
+**Aksiyon:** Metropol''den GÜNCEL endpoint listesi (Postman koleksiyonu) istenecek: GetPreSaleInfo, SaleConfirm, GetSaleInfo, CreateCode, TransactionHistory, DeleteUser, BalanceTransfer. Gelince ApiEndpoints sabitleri güncellenir (sözleşme değişikliği Metropol kaynağıyla — CLAUDE.md kural 6''ya uygun).
+
+**Sondalama tekniği notu:** Bu sunucuda auth''suz istek her yola 500 dönüyor (yol ayrımı yapmıyor) — uç varlığı ancak GEÇERLİ token''la test edilebiliyor (Redis''teki canlı token kullanıldı, ekrana yazdırılmadan).
