@@ -60,6 +60,14 @@ public sealed class MetropolTokenService(
         }
     }
 
+    /// <summary>
+    /// Cache'teki token'ı düşürür (2026-06-12: Metropol token'ı bizim TTL dolmadan
+    /// kendi tarafında geçersiz kılabiliyor ve geçersiz token'a HTTP 404 dönüyor —
+    /// API client 404'te bunu çağırıp taze token'la BİR kez yeniden dener, LESSONS.md).
+    /// </summary>
+    public Task InvalidateAsync(CancellationToken cancellationToken = default) =>
+        cache.RemoveAsync(CacheKey, cancellationToken);
+
     private async Task<string> GenerateAndCacheAsync(CancellationToken cancellationToken)
     {
         // Saat farkı tuzağı: CreateDate yerel saatten değil getdate'ten alınır (CLAUDE.md §6).

@@ -85,17 +85,26 @@ public sealed class MetropolApiClient(
     private async Task<string> PostRawAsync<TRequest>(
         string endpoint, TRequest request, CancellationToken ct)
     {
-        var token = await tokenService.GetTokenAsync(ct);
+        var response = await SendOnceAsync(endpoint, request, ct);
 
-        using var message = new HttpRequestMessage(HttpMethod.Post, endpoint)
+        // PostAsync ile aynı 404→token tazele→tek retry kuralı (merchantlist retry-safe).
+        if (response.StatusCode == System.Net.HttpStatusCode.NotFound)
         {
-            Content = JsonContent.Create(request, options: JsonOptions),
-        };
-        message.Headers.Authorization = new AuthenticationHeaderValue("Bearer", token);
+            response.Dispose();
+            await tokenService.InvalidateAsync(ct);
+            response = await SendOnceAsync(endpoint, request, ct);
+        }
 
-        using var response = await httpClient.SendAsync(message, ct);
-        response.EnsureSuccessStatusCode();
-        return await response.Content.ReadAsStringAsync(ct);
+        using (response)
+        {
+            if (response.StatusCode == System.Net.HttpStatusCode.NotFound)
+            {
+                throw new MetropolEndpointUnavailableException(endpoint);
+            }
+
+            response.EnsureSuccessStatusCode();
+            return await response.Content.ReadAsStringAsync(ct);
+        }
     }
 
     public Task<SendOtpResponse> SendOtpAsync(SendOtpRequest request, CancellationToken ct = default) =>
@@ -110,7 +119,63 @@ public sealed class MetropolApiClient(
     public Task<DeactivateCardResponse> DeactivateCardAsync(DeactivateCardRequest request, CancellationToken ct = default) =>
         PostAsync<DeactivateCardRequest, DeactivateCardResponse>(ApiEndpoints.DeactivateCard, request, ct);
 
+    /// <summary>
+    /// 404'te token tazeleyip yeniden denemenin GÜVENLİ olduğu uçlar: para hareketi
+    /// yaratmayan / SMS göndermeyen çağrılar. SaleConfirm, BalanceTransfer (çift işlem)
+    /// ve AddAccount/Confirm (çift SMS / tek kullanımlık OTP) BİLEREK dışarıda.
+    /// </summary>
+    private static readonly HashSet<string> AuthRetrySafeEndpoints =
+    [
+        ApiEndpoints.BalanceQuery,
+        ApiEndpoints.GetPreSaleInfo,
+        ApiEndpoints.GetSaleInfo,
+        ApiEndpoints.TransactionHistory,
+        ApiEndpoints.MerchantList,
+        ApiEndpoints.CustomerDetailReport,
+        ApiEndpoints.CustomerSummaryReport,
+        ApiEndpoints.DeleteUser,
+    ];
+
     private async Task<TResponse> PostAsync<TRequest, TResponse>(
+        string endpoint, TRequest request, CancellationToken ct)
+    {
+        var response = await SendOnceAsync(endpoint, request, ct);
+
+        // Metropol GEÇERSİZ token'a 404 dönüyor (LESSONS 2026-06-12) ve token'ı bizim
+        // TTL dolmadan kendi tarafında düşürebiliyor → güvenli uçlarda token tazelenip
+        // BİR kez yeniden denenir; para/SMS uçları kullanıcı tekrarına bırakılır.
+        if (response.StatusCode == System.Net.HttpStatusCode.NotFound
+            && AuthRetrySafeEndpoints.Contains(endpoint))
+        {
+            response.Dispose();
+            logger.LogWarning(
+                "Metropol 404 (muhtemel geçersiz token): {Endpoint} — token tazelenip yeniden deneniyor.",
+                endpoint);
+            await tokenService.InvalidateAsync(ct);
+            response = await SendOnceAsync(endpoint, request, ct);
+        }
+
+        using (response)
+        {
+            if (response.StatusCode == System.Net.HttpStatusCode.NotFound)
+            {
+                throw new MetropolEndpointUnavailableException(endpoint);
+            }
+
+            response.EnsureSuccessStatusCode();
+
+            var result = await response.Content.ReadFromJsonAsync<TResponse>(JsonOptions, ct);
+            if (result is null)
+            {
+                throw new InvalidOperationException($"Metropol yanıtı boş döndü ({endpoint}).");
+            }
+
+            LogBusinessError(endpoint, result);
+            return result;
+        }
+    }
+
+    private async Task<HttpResponseMessage> SendOnceAsync<TRequest>(
         string endpoint, TRequest request, CancellationToken ct)
     {
         var token = await tokenService.GetTokenAsync(ct);
@@ -121,24 +186,7 @@ public sealed class MetropolApiClient(
         };
         message.Headers.Authorization = new AuthenticationHeaderValue("Bearer", token);
 
-        using var response = await httpClient.SendAsync(message, ct);
-        if (response.StatusCode == System.Net.HttpStatusCode.NotFound)
-        {
-            // Uç bu ortamda yok (v2 yolları test sunucusunda 404 — LESSONS 2026-06-12);
-            // jenerik 500 yerine middleware'de 503 PROVIDER_UNAVAILABLE'a çevrilir.
-            throw new MetropolEndpointUnavailableException(endpoint);
-        }
-
-        response.EnsureSuccessStatusCode();
-
-        var result = await response.Content.ReadFromJsonAsync<TResponse>(JsonOptions, ct);
-        if (result is null)
-        {
-            throw new InvalidOperationException($"Metropol yanıtı boş döndü ({endpoint}).");
-        }
-
-        LogBusinessError(endpoint, result);
-        return result;
+        return await httpClient.SendAsync(message, ct);
     }
 
     /// <summary>
