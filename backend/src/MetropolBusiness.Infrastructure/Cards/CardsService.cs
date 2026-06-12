@@ -53,19 +53,27 @@ public sealed class CardsService(
     public async Task<Result<AddCardResponse>> AddAsync(
         AddCardRequest request, CancellationToken cancellationToken = default)
     {
-        if (string.IsNullOrWhiteSpace(request.CardNo) || string.IsNullOrWhiteSpace(request.MobilePhone))
+        if (string.IsNullOrWhiteSpace(request.CardNo))
         {
-            // Hata detayına kart no/telefon DEĞERİ yazılmaz (PII) — yalnızca alan adları.
+            // Hata detayına kart no DEĞERİ yazılmaz (PII) — yalnızca alan adı.
             return Result<AddCardResponse>.Fail(new Error(
                 ErrorCodes.ValidationError,
-                "Kart numarası ve telefon alanları zorunludur.",
+                "Kart numarası zorunludur.",
                 400,
-                new { fields = new[] { "cardNo", "mobilePhone" } }));
+                new { fields = new[] { "cardNo" } }));
+        }
+
+        // Telefon istemciden GELMEZSE hesaptaki telefon kullanılır (karar 2026-06-12):
+        // istemci alanı yalnız hesapta telefon yoksa gösterir.
+        var phoneResult = await ResolvePhoneAsync(request.MobilePhone, cancellationToken);
+        if (!phoneResult.IsSuccess)
+        {
+            return Result<AddCardResponse>.Fail(phoneResult.Error!);
         }
 
         // Bu adımda DB'ye kayıt YAZILMAZ: kart ancak OTP doğrulanınca (confirm) oluşur.
         var response = await metropolApiClient.AddAccountAsync(
-            new AddAccountRequest { CardNo = request.CardNo.Trim(), MobilePhone = request.MobilePhone.Trim() },
+            new AddAccountRequest { CardNo = request.CardNo.Trim(), MobilePhone = phoneResult.Value },
             cancellationToken);
 
         if (!MetropolErrorCatalog.IsSuccess(response.ResponseCode))
@@ -76,21 +84,49 @@ public sealed class CardsService(
         return Result<AddCardResponse>.Ok(new AddCardResponse(response.ValidationGuid));
     }
 
+    /// <summary>
+    /// İstekteki telefon boşsa hesaptaki telefonu döner (karar 2026-06-12: istemci
+    /// alanı yalnız hesapta telefon yoksa gösterir). İkisi de boşsa validasyon hatası.
+    /// </summary>
+    private async Task<Result<string>> ResolvePhoneAsync(
+        string? requestPhone, CancellationToken cancellationToken)
+    {
+        if (!string.IsNullOrWhiteSpace(requestPhone))
+        {
+            return Result<string>.Ok(requestPhone.Trim());
+        }
+
+        var userId = RequiredUserId;
+        var phone = await dbContext.Users
+            .AsNoTracking()
+            .Where(u => u.Id == userId)
+            .Select(u => u.Phone)
+            .FirstOrDefaultAsync(cancellationToken);
+
+        return string.IsNullOrWhiteSpace(phone)
+            ? Result<string>.Fail(new Error(
+                ErrorCodes.ValidationError,
+                "Hesabınızda telefon numarası yok; telefon alanı zorunludur.",
+                400,
+                new { fields = new[] { "mobilePhone" } }))
+            : Result<string>.Ok(phone);
+    }
+
     public async Task<Result<ConfirmCardResponse>> ConfirmAsync(
         ConfirmCardRequest request, CancellationToken cancellationToken = default)
     {
-        if (string.IsNullOrWhiteSpace(request.ValidationGuid) || string.IsNullOrWhiteSpace(request.Phone))
+        if (string.IsNullOrWhiteSpace(request.ValidationGuid))
         {
             return Result<ConfirmCardResponse>.Fail(new Error(
                 ErrorCodes.ValidationError,
                 "Doğrulama bilgileri eksik.",
                 400,
-                new { fields = new[] { "validationGuid", "phone" } }));
+                new { fields = new[] { "validationGuid" } }));
         }
 
         var userId = RequiredUserId;
+        // TRACKED sorgu: MemberId boşsa burada üretilip kaydedilir (aşağıda).
         var user = await dbContext.Users
-            .AsNoTracking()
             .FirstOrDefaultAsync(u => u.Id == userId, cancellationToken);
         if (user is null)
         {
@@ -100,13 +136,23 @@ public sealed class CardsService(
 
         // MemberId İSTEKTEN ALINMAZ: istemci başka kullanıcının MemberId'sini deneyemesin diye
         // her zaman oturum sahibinin users.member_id değeri gönderilir (sözleşme alanı yok sayılır).
+        // Boşsa BİZ üretip Metropol'e göndeririz (karar 2026-06-12) — Metropol çağrısından
+        // ÖNCE kaydedilir ki gönderilen değer her durumda kalıcı olsun.
         if (string.IsNullOrWhiteSpace(user.MemberId))
+        {
+            user.EnsureMemberId();
+            await dbContext.SaveChangesAsync(cancellationToken);
+        }
+
+        // Telefon boşsa hesaptaki telefon kullanılır (AddAsync ile aynı karar).
+        var phone = string.IsNullOrWhiteSpace(request.Phone) ? user.Phone : request.Phone.Trim();
+        if (string.IsNullOrWhiteSpace(phone))
         {
             return Result<ConfirmCardResponse>.Fail(new Error(
                 ErrorCodes.ValidationError,
-                "Metropol üye numaranız (MemberId) tanımlı değil. Lütfen firma yöneticinize başvurun.",
+                "Hesabınızda telefon numarası yok; telefon alanı zorunludur.",
                 400,
-                new { field = "memberId" }));
+                new { fields = new[] { "phone" } }));
         }
 
         var response = await metropolApiClient.AddAccountConfirmAsync(
@@ -114,7 +160,7 @@ public sealed class CardsService(
             {
                 ValidationGuid = request.ValidationGuid.Trim(),
                 ValidationCode = request.ValidationCode,
-                Phone = request.Phone.Trim(),
+                Phone = phone,
                 MemberId = user.MemberId,
                 Email = request.Email?.Trim() ?? user.Email ?? string.Empty,
                 TCKN = request.Tckn?.Trim() ?? string.Empty,

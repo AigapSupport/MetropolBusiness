@@ -13,7 +13,8 @@ export interface CardSummary {
 
 export interface AddCardRequest {
   cardNo: string;
-  mobilePhone: string;
+  /** Boşsa backend hesaptaki telefonu kullanır (karar 2026-06-12). */
+  mobilePhone?: string;
 }
 
 export interface AddCardResponse {
@@ -23,11 +24,14 @@ export interface AddCardResponse {
 export interface ConfirmCardRequest {
   validationGuid: string;
   validationCode: number;
-  memberId: string;
-  name: string;
-  surname: string;
-  email: string;
-  phone: string;
+  /** Backend her zaman oturum sahibinin member_id'sini kullanır; boşsa ÜRETİR (2026-06-12). */
+  memberId?: string;
+  /** Ad/soyad/e-posta artık istemciden istenmez (karar 2026-06-12). */
+  name?: string;
+  surname?: string;
+  email?: string;
+  /** Boşsa backend hesaptaki telefonu kullanır. */
+  phone?: string;
   tckn?: string;
 }
 

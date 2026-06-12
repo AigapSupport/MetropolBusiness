@@ -121,10 +121,15 @@ export type MetropolStackParamList = {
   MetropolHome: undefined;
   /** Kart detayı — 2 sekme: Bakiyeler / İşlemler (PRD §8.3). */
   CardDetail: { cardId: string };
-  // Kart ekleme — 3 adım (PRD §8.2)
+  // Kart ekleme — 2 adım (PRD §8.2; karar 2026-06-12: bilgi adımı kaldırıldı,
+  // telefon hesaptan gelir, phoneFromAccount=true ise istekte gönderilmez)
   AddCardNumber: undefined;
-  AddCardOtp: { cardNo: string; phone: string; validationGuid: string };
-  AddCardInfo: { phone: string; validationGuid: string; validationCode: string };
+  AddCardOtp: {
+    cardNo: string;
+    phone: string;
+    phoneFromAccount: boolean;
+    validationGuid: string;
+  };
   // Harcama (PRD §8.4 — kart seçimi presale'den ÖNCE)
   PayChoose: undefined;
   PayQr: undefined;

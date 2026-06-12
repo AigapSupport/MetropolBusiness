@@ -96,6 +96,19 @@ public sealed class CardsServiceTests : IDisposable
         Assert.Equal(0, await verify.Cards.CountAsync(c => c.UserId == _userA1));
     }
 
+    // KARAR 2026-06-12: telefon istekten gelmezse hesaptaki telefon Metropol'e gider
+    // (istemci alanı yalnız hesapta telefon yoksa gösterir).
+    [Fact]
+    public async Task Add_without_phone_uses_account_phone()
+    {
+        var service = CreateCardsService(TenantA, _userA1);
+
+        var result = await service.AddAsync(new AddCardRequest("6375021912342976"));
+
+        Assert.True(result.IsSuccess);
+        Assert.Equal("5550000001", _metropol.AddAccountCalls.Single().MobilePhone);
+    }
+
     // ── (c) Metropol ResponseCode != 0 → METROPOL_ERROR + katalog mesajı ─────
 
     [Fact]
@@ -151,16 +164,23 @@ public sealed class CardsServiceTests : IDisposable
         Assert.Equal("3299", _metropol.ConfirmCalls.Single().MemberId);
     }
 
+    // KARAR 2026-06-12: MemberId boşsa hata DEĞİL — sunucu üretir (Id "N" = 32 hex),
+    // Metropol çağrısından ÖNCE kaydeder ve aynı değeri Metropol'e gönderir.
     [Fact]
-    public async Task Confirm_without_member_id_fails_before_metropol_call()
+    public async Task Confirm_without_member_id_generates_persists_and_sends_it()
     {
         var service = CreateCardsService(TenantA, _userA3);
 
         var result = await service.ConfirmAsync(NewConfirmRequest());
 
-        Assert.False(result.IsSuccess);
-        Assert.Equal(ErrorCodes.ValidationError, result.Error!.Code);
-        Assert.Empty(_metropol.ConfirmCalls);
+        Assert.True(result.IsSuccess);
+
+        var expected = _userA3.ToString("N");
+        Assert.Equal(expected, _metropol.ConfirmCalls.Single().MemberId);
+
+        using var verify = CreateContext(TenantA, _userA3);
+        var stored = await verify.Users.AsNoTracking().SingleAsync(u => u.Id == _userA3);
+        Assert.Equal(expected, stored.MemberId);
     }
 
     [Fact]

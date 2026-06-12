@@ -5,7 +5,6 @@
  */
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 
-import { AddCardInfoScreen } from '@/screens/Metropol/AddCard/AddCardInfoScreen';
 import { AddCardNumberScreen } from '@/screens/Metropol/AddCard/AddCardNumberScreen';
 import { AddCardOtpScreen } from '@/screens/Metropol/AddCard/AddCardOtpScreen';
 import { CardDetailScreen } from '@/screens/Metropol/CardDetail/CardDetailScreen';
@@ -38,10 +37,9 @@ export function MetropolStack() {
       <Stack.Screen name="MetropolHome" component={MetropolHomeScreen} />
       {/* Kart detayı — 2 sekme: Bakiyeler / İşlemler (PRD §8.3) */}
       <Stack.Screen name="CardDetail" component={CardDetailScreen} />
-      {/* Kart ekleme — 3 adım (PRD §8.2) */}
+      {/* Kart ekleme — 2 adım (PRD §8.2; karar 2026-06-12: bilgi adımı kaldırıldı) */}
       <Stack.Screen name="AddCardNumber" component={AddCardNumberScreen} />
       <Stack.Screen name="AddCardOtp" component={AddCardOtpScreen} />
-      <Stack.Screen name="AddCardInfo" component={AddCardInfoScreen} />
       {/* Harcama (PRD §8.4) */}
       <Stack.Screen name="PayChoose" component={PayChooseScreen} />
       <Stack.Screen name="PayQr" component={PayQrScreen} />

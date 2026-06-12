@@ -223,13 +223,16 @@ Kullanıcının kartları:
 
 ### POST /metropol/cards/add
 (AddAccount) İstek: `{ "cardNo":"6375...", "mobilePhone":"5345030539" }`
+`mobilePhone` OPSİYONEL (karar 2026-06-12): boşsa hesaptaki telefon kullanılır —
+istemci alanı yalnız hesapta telefon yoksa gösterir.
 Yanıt 200: `{ "validationGuid":"string" }` (SMS OTP gönderildi). Hata 422 `METROPOL_ERROR` + details.
 
 ### POST /metropol/cards/confirm
-(AddAccountConfirm) İstek:
+(AddAccountConfirm) İstek (karar 2026-06-12: ad/soyad/e-posta istemciden İSTENMEZ;
+`phone` boşsa hesaptaki telefon; `memberId` her durumda sunucuda çözülür, BOŞSA
+sunucu ÜRETİR — users.member_id'ye kaydedilip Metropol'e gönderilir):
 ```json
-{ "validationGuid":"string", "validationCode":123456, "memberId":"3299",
-  "name":"Test", "surname":"Deneme", "email":"x@mail.com", "phone":"5345030539", "tckn":"optional" }
+{ "validationGuid":"string", "validationCode":123456, "tckn":"opsiyonel" }
 ```
 Yanıt 201: `{ "cardId":"uuid", "maskedCardNo":"637******976", "name":"Test", "surName":"Deneme" }`.
 
