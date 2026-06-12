@@ -1,3 +1,5 @@
+using System.Net.Security;
+using System.Security.Authentication;
 using MetropolBusiness.Integration.Metropol.Services;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
@@ -7,6 +9,19 @@ namespace MetropolBusiness.Integration.Metropol;
 
 public static class DependencyInjection
 {
+    /// <summary>
+    /// Metropol test sunucuları .NET'in varsayılan (TLS 1.3 içeren) ClientHello'suna
+    /// "connection reset by peer" dönüyor; wget/openssl aynı konteynerden sorunsuz.
+    /// TLS 1.2'ye sabitlenir (2026-06-12 tespiti, LESSONS.md).
+    /// </summary>
+    private static SocketsHttpHandler CreateMetropolHandler() => new()
+    {
+        SslOptions = new SslClientAuthenticationOptions
+        {
+            EnabledSslProtocols = SslProtocols.Tls12,
+        },
+        PooledConnectionLifetime = TimeSpan.FromMinutes(5),
+    };
     /// <summary>
     /// Metropol entegrasyon kayıtları: iki ayrı HttpClient (auth + api base URL'leri,
     /// CLAUDE.md §6), token servisi ve tipli API client.
@@ -24,7 +39,7 @@ public static class DependencyInjection
             var options = provider.GetRequiredService<IOptions<MetropolOptions>>().Value;
             client.BaseAddress = new Uri(options.AuthBaseUrl);
             client.Timeout = TimeSpan.FromSeconds(15);
-        });
+        }).ConfigurePrimaryHttpMessageHandler(CreateMetropolHandler);
 
         services.AddScoped<MetropolTokenService>();
 
@@ -36,7 +51,7 @@ public static class DependencyInjection
             var options = provider.GetRequiredService<IOptions<MetropolOptions>>().Value;
             client.BaseAddress = new Uri(options.ApiBaseUrl);
             client.Timeout = TimeSpan.FromSeconds(30);
-        });
+        }).ConfigurePrimaryHttpMessageHandler(CreateMetropolHandler);
 
         return services;
     }
