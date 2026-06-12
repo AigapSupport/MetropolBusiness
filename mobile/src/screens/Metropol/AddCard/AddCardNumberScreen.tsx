@@ -1,13 +1,14 @@
 /**
- * Kart Ekle — Adım 1/2: kart numarası (PRD §8.2, screens-metropol-cards.jsx > CardAdd1).
- * KARAR 2026-06-12: telefon alanı yalnız hesapta telefon YOKSA gösterilir; varsa
- * backend hesaptaki telefonu kullanır (istek telefonsuz gider). Ad/soyad/e-posta
- * adımı kaldırıldı — akış 2 adıma indi (kart no → OTP).
+ * Kart Ekle — Adım 1/2: kart numarası + telefon (PRD §8.2, screens-metropol-cards.jsx > CardAdd1).
+ * KARAR 2026-06-12 (rev.2): telefon alanı hesaptaki numarayla ÖNCEDEN DOLU gelir ama
+ * DÜZENLENEBİLİR — Metropol, telefonun KARTA kayıtlı numarayla eşleşmesini istiyor ve
+ * bu numara hesap numarasından farklı olabilir (9004 "Kullanıcı bulunamadı" dersi).
+ * Ad/soyad/e-posta adımı yok — akış 2 adım (kart no → OTP).
  * POST /metropol/cards/add → validationGuid döner, SMS OTP gider → Adım 2'ye geçilir.
  * METROPOL_ERROR (422) mesajı kullanıcıya aynen gösterilir.
  */
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -41,24 +42,27 @@ export function AddCardNumberScreen({ navigation }: Props) {
   const [cardNo, setCardNo] = useState('');
   const [phone, setPhone] = useState('');
 
-  // Hesapta telefon varsa alan GÖSTERİLMEZ; backend hesaptakini kullanır.
+  // Alan hesaptaki numarayla ÖN DOLU gelir; kartın Metropol'deki kayıtlı numarası
+  // farklıysa kullanıcı düzeltebilir (yalnız boşken doldurulur — yazılanı ezmez).
   const accountPhone = me.data?.phone ?? '';
-  const needsPhone = accountPhone.trim() === '';
+  useEffect(() => {
+    if (phone === '' && accountPhone !== '') {
+      setPhone(accountPhone.replace(/\D/g, '').slice(0, PHONE_LENGTH));
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [accountPhone]);
 
-  const valid =
-    cardNo.length === CARD_NO_LENGTH && (!needsPhone || phone.length === PHONE_LENGTH);
+  const valid = cardNo.length === CARD_NO_LENGTH && phone.length === PHONE_LENGTH;
 
   const handleContinue = () => {
-    const mobilePhone = needsPhone ? phone : undefined;
     addCard.mutate(
-      { cardNo, mobilePhone },
+      { cardNo, mobilePhone: phone },
       {
         onSuccess: (response) => {
           navigation.navigate('AddCardOtp', {
             cardNo,
-            // OTP ekranı "gönderildi" metninde gösterir; backend zaten kendi çözer.
-            phone: needsPhone ? phone : accountPhone,
-            phoneFromAccount: !needsPhone,
+            phone,
+            phoneFromAccount: false,
             validationGuid: response.validationGuid,
           });
         },
@@ -98,17 +102,15 @@ export function AddCardNumberScreen({ navigation }: Props) {
           maxLength={CARD_NO_LENGTH + 3}
           autoFocus
         />
-        {needsPhone ? (
-          <LabeledTextInput
-            label={t('metropol.addCard.phoneLabel')}
-            value={phone}
-            onChangeText={(text) => setPhone(text.replace(/\D/g, '').slice(0, PHONE_LENGTH))}
-            placeholder={t('auth.phonePlaceholder')}
-            prefix="+90"
-            keyboardType="phone-pad"
-            maxLength={PHONE_LENGTH}
-          />
-        ) : null}
+        <LabeledTextInput
+          label={t('metropol.addCard.phoneLabel')}
+          value={phone}
+          onChangeText={(text) => setPhone(text.replace(/\D/g, '').slice(0, PHONE_LENGTH))}
+          placeholder={t('auth.phonePlaceholder')}
+          prefix="+90"
+          keyboardType="phone-pad"
+          maxLength={PHONE_LENGTH}
+        />
         {addCard.isError ? (
           <Text style={{ color: theme.colors.danger, fontSize: theme.fontSize.sm }}>
             {getMetropolErrorMessage(addCard.error, t('common.genericError'))}

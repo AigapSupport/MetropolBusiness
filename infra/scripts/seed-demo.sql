@@ -131,20 +131,8 @@ INSERT INTO expense_requests (id, tenant_id, user_id, type, amount, date, receip
    NULL, NULL, NULL, now() - interval '2 days', now())
 ON CONFLICT (id) DO NOTHING;
 
--- ── Kartlar + bakiyeler (SAHTE token; Metropol işlemi YAPILAMAZ) ─
--- Token PlaceholderFieldCipher biçiminde (enc:base64) ÇÖZÜLEBİLİR ama Metropol'de
--- geçersizdir → bakiye akışı tasarlandığı gibi "erişilemez → stale snapshot" yoluna düşer.
-INSERT INTO cards (id, tenant_id, user_id, user_account_token_encrypted, masked_card_no, holder_name, status, deleted_at, created_at, updated_at) VALUES
-  ('cad00000-0000-0000-0000-000000000001', '11111111-1111-1111-1111-111111111111', 'aaaaaaaa-0000-0000-0000-000000000003',
-   'enc:REVNTy1GQUtFLVRPS0VOLTAwMQ==', '637512******4821', 'Demo Çalışan', 'active', NULL, now() - interval '30 days', now()),
-  ('cad00000-0000-0000-0000-000000000002', '11111111-1111-1111-1111-111111111111', 'aaaaaaaa-0000-0000-0000-000000000001',
-   'enc:REVNTy1GQUtFLVRPS0VOLTAwMg==', '637512******7733', 'Demo Admin', 'active', NULL, now() - interval '45 days', now())
-ON CONFLICT (id) DO NOTHING;
-
-INSERT INTO card_balances (id, tenant_id, card_id, wallet_id, wallet_name, balance, created_at, updated_at) VALUES
-  ('ba1a0000-0000-0000-0000-000000000001', '11111111-1111-1111-1111-111111111111', 'cad00000-0000-0000-0000-000000000001', 1, 'Resto', 1845.75, now(), now()),
-  ('ba1a0000-0000-0000-0000-000000000002', '11111111-1111-1111-1111-111111111111', 'cad00000-0000-0000-0000-000000000001', 3, 'Gift', 500.00, now(), now()),
-  ('ba1a0000-0000-0000-0000-000000000003', '11111111-1111-1111-1111-111111111111', 'cad00000-0000-0000-0000-000000000002', 1, 'Resto', 2310.25, now(), now())
-ON CONFLICT (id) DO NOTHING;
+-- NOT (2026-06-12): sahte kart/bakiye seed'i KALDIRILDI — Metropol entegrasyonu
+-- canlı olduğundan sahte tokenlar gerçek red yanıtı (74652/8551) üretip ana ekranda
+-- hata gösteriyordu. Kart testi Metropol'ün verdiği GERÇEK test kartıyla yapılır.
 
 COMMIT;

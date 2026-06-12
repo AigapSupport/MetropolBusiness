@@ -60,13 +60,42 @@ public sealed class MetropolApiClient(
     public Task<BalanceTransferResponse> BalanceTransferAsync(BalanceTransferRequest request, CancellationToken ct = default) =>
         PostAsync<BalanceTransferRequest, BalanceTransferResponse>(ApiEndpoints.BalanceTransfer, request, ct);
 
-    public Task<MerchantListResponse> MerchantListAsync(MerchantListRequest request, CancellationToken ct = default)
+    public async Task<MerchantListResponse> MerchantListAsync(MerchantListRequest request, CancellationToken ct = default)
     {
         // LastListVersionDate sözleşmede internal set'lidir ve null serileşiyordu;
         // Metropol tarafı null'da "Beklenmedik bir hata" (90000) dönebildiği için
         // boş string'e normalize edilir (alan adı/tipi DEĞİŞMEZ — CLAUDE.md kural 6).
         request.LastListVersionDate ??= string.Empty;
-        return PostAsync<MerchantListRequest, MerchantListResponse>(ApiEndpoints.MerchantList, request, ct);
+
+        // Merchant verisi KAMUSALDIR (PII değil) — yanıt alan adlarını sözleşmeyle
+        // karşılaştırabilmek için ham gövdenin başı loglanır (sürüm geliyor ama liste
+        // hep boş geliyorsa muhtemel neden alan adı uyuşmazlığıdır, LESSONS 2026-06-12).
+        var raw = await PostRawAsync(ApiEndpoints.MerchantList, request, ct);
+        logger.LogInformation(
+            "Metropol merchantlist ham yanıt (ilk 1500): {RawPrefix}",
+            raw.Length <= 1500 ? raw : raw[..1500]);
+
+        var result = JsonSerializer.Deserialize<MerchantListResponse>(raw, JsonOptions)
+            ?? throw new InvalidOperationException("Metropol merchantlist yanıtı boş döndü.");
+        LogBusinessError(ApiEndpoints.MerchantList, result);
+        return result;
+    }
+
+    /// <summary>Ham gövde dönen POST — yalnız PII içermeyen uçlar için (merchantlist).</summary>
+    private async Task<string> PostRawAsync<TRequest>(
+        string endpoint, TRequest request, CancellationToken ct)
+    {
+        var token = await tokenService.GetTokenAsync(ct);
+
+        using var message = new HttpRequestMessage(HttpMethod.Post, endpoint)
+        {
+            Content = JsonContent.Create(request, options: JsonOptions),
+        };
+        message.Headers.Authorization = new AuthenticationHeaderValue("Bearer", token);
+
+        using var response = await httpClient.SendAsync(message, ct);
+        response.EnsureSuccessStatusCode();
+        return await response.Content.ReadAsStringAsync(ct);
     }
 
     public Task<SendOtpResponse> SendOtpAsync(SendOtpRequest request, CancellationToken ct = default) =>
