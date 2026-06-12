@@ -4,6 +4,7 @@ using MetropolBusiness.Domain.Entities;
 using MetropolBusiness.Infrastructure.Persistence;
 using MetropolBusiness.Integration.Metropol.Services;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Logging;
 using static MetropolBusiness.Integration.Metropol.Models.MetropolModels;
 
 namespace MetropolBusiness.Infrastructure.Cards;
@@ -20,7 +21,7 @@ public sealed class CardsService(
     IFieldCipher fieldCipher,
     IMetropolApiClient metropolApiClient,
     IMemberIdGenerator memberIdGenerator,
-    Microsoft.Extensions.Logging.ILogger<CardsService> logger) : ICardsService
+    ILogger<CardsService> logger) : ICardsService
 {
     private static readonly Error CardNotFoundError = new(
         ErrorCodes.NotFound, "Kart bulunamadı.", 404);
