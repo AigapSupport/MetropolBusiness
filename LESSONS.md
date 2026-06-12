@@ -247,3 +247,17 @@ Metropol kartlardaki sorunu düzeltti; gerçek test kartı uygulamadan eklendi v
 **Aksiyon:** Metropol''den GÜNCEL endpoint listesi (Postman koleksiyonu) istenecek: GetPreSaleInfo, SaleConfirm, GetSaleInfo, CreateCode, TransactionHistory, DeleteUser, BalanceTransfer. Gelince ApiEndpoints sabitleri güncellenir (sözleşme değişikliği Metropol kaynağıyla — CLAUDE.md kural 6''ya uygun).
 
 **Sondalama tekniği notu:** Bu sunucuda auth''suz istek her yola 500 dönüyor (yol ayrımı yapmıyor) — uç varlığı ancak GEÇERLİ token''la test edilebiliyor (Redis''teki canlı token kullanıldı, ekrana yazdırılmadan).
+
+---
+
+## 2026-06-12 — DÜZELTME: "v2 uçları yok" teşhisi YANLIŞTI — sorun token + sondalama hatasıydı
+
+**Önceki kayıt geçersiz.** İki katmanlı hata vardı:
+1. **Sondalama hatası (bizim):** RedisCache değerleri HASH olarak saklar; `redis-cli GET` hash''e WRONGTYPE hata METNİ döndürür ve problar o metni Bearer token olarak kullandı → her yol 404 göründü. Doğrusu: `redis-cli HGET <anahtar> data`.
+2. **Metropol davranışı:** GEÇERSİZ/eskimiş token''a 401 değil **HTTP 404** dönüyor. Ve token''ı bizim 4 dakikalık cache TTL''imiz dolmadan kendi tarafında düşürebiliyor → uygulamada aralıklı 404/500.
+
+**Gerçek durum:** TÜM v2 uçları mevcut ve çalışıyor (preinfo/confirm/saleinfo/transactionhistory/delete/balancetransfer/merchantlist). Doğru token''la beşi canlı doğrulandı; kullanıcının kartında 5 gerçek işlem listelendi.
+
+**Çözüm (deploy edildi):** MetropolApiClient 404''te token''ı cache''ten düşürüp (MetropolTokenService.InvalidateAsync) GÜVENLİ uçlarda isteği BİR kez yineler. Para/SMS uçları (SaleConfirm, BalanceTransfer, AddAccount/Confirm) bilinçli retry DIŞI — çift işlem/çift SMS riski; onlar kullanıcı tekrarına bırakılır. İkinci 404 → 503 PROVIDER_UNAVAILABLE açık mesajla.
+
+**DERS:** Bu sunucuda 404 ≠ "uç yok"; önce token geçerliliğini sorgula. Sondalarda token''ı her zaman canlı akıştan, doğru cache biçiminden al.
